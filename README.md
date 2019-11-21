@@ -1,5 +1,7 @@
 # docs-map-vis
 
+Map-based Docs Visualization
+
 ## Project setup
 ```
 npm install
