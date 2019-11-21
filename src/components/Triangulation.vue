@@ -1,6 +1,6 @@
 <template>
   <div class="triangulation">
-    <div class="title"><h3>triangulation</h3></div>
+    <div class="title"><h3>Triangulation</h3></div>
     <div id="triangulation-map"></div>
   </div>
 </template>
@@ -16,7 +16,7 @@ import * as olproj from 'ol/proj'
 import * as olgeom from 'ol/geom'
 import * as olstyle from 'ol/style'
 import projdata from '../assets/data/thucnews/projection_dense_tfidf_thucnews.json'
-import similarityMatrix from '../assets/data/thucnews/similarity_matrix_thucnews.json'
+import similarityMatrix from '../assets/data/thucnews/similarity_matrix_thucnews_5round.json'
 export default {
   name: 'triangulation',
   data() {
@@ -49,7 +49,7 @@ export default {
     loadSettings() {
       let xExt = d3.extent(projdata, d => d.x);
       let yExt = d3.extent(projdata, d => d.y);
-      this.mapConfig.extent = [xExt[0]*2, yExt[1], xExt[1]*2, yExt[0]];
+      this.mapConfig.extent = [xExt[0]*1.2, yExt[1]*1.2, xExt[1]*1.2, yExt[0]*1.2];
       // this.color = d3.scaleLinear().domain([0, 0.2]).range(['yellow', 'green']);
       this.color= d3.scaleSequential().domain([0, 0.5]).interpolator(d3.interpolateYlGn);//interpolateBrBG,interpolateYlGn
 

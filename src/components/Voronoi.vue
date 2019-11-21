@@ -16,7 +16,7 @@ import * as olproj from 'ol/proj'
 import * as olgeom from 'ol/geom'
 import * as olstyle from 'ol/style'
 import projdata from '../assets/data/thucnews/projection_dense_tfidf_thucnews.json'
-import similarityMatrix from '../assets/data/thucnews/similarity_matrix_thucnews.json'
+import similarityMatrix from '../assets/data/thucnews/similarity_matrix_thucnews_5round.json'
 export default {
   name: 'voronoi',
   data() {
@@ -28,7 +28,7 @@ export default {
         colorLumpLayer: null,
       },
       mapConfig: {
-        extent: [],//[left, bottom, right, top]
+        extent: [],//[minx, miny, maxx, maxy]
         zoom: 1,
         minZoom: 1,
         maxZoom: 18,
@@ -49,7 +49,11 @@ export default {
     loadSettings() {
       let xExt = d3.extent(projdata, d => d.x);
       let yExt = d3.extent(projdata, d => d.y);
-      this.mapConfig.extent = [xExt[0], yExt[1], xExt[1], yExt[0]];
+      let x = (xExt[1] - xExt[0]) > (yExt[1] - yExt[0]) ? xExt: yExt;
+      let y = (xExt[1] - xExt[0]) < (yExt[1] - yExt[0]) ? xExt: yExt;
+      this.mapConfig.extent = [x[0]*1.2, y[0]*1.2, x[1]*1.2, y[1]*1.2];
+      // let w_h = width / height;
+      // let x_y = (xExt[1]*1.2 - xExt[0]*1.2) / (yExt[1] - yExt[0]);
       // this.color = d3.scaleLinear().domain([0, 0.2]).range(['yellow', 'green']);
       this.color= d3.scaleSequential().domain([0, 0.5]).interpolator(d3.interpolateYlGn);//interpolateBrBG,interpolateYlGn
     },
@@ -60,8 +64,9 @@ export default {
           projection: new olproj.Projection({
             extent: this.mapConfig.extent
           }),
+          // extent: this.mapConfig.extent,
           center: olextent.getCenter(this.mapConfig.extent),
-          zoom: 2
+          zoom: 2,
         }),
       });
     },
@@ -75,7 +80,7 @@ export default {
       
       projdata.forEach(doc => {
         let feature = new ol.Feature({
-          geometry: new olgeom.Point([parseFloat(doc.x), parseFloat(doc.y)])
+          geometry: new olgeom.Point([doc.x, doc.y])
         });
         feature.setStyle(new olstyle.Style({
           image: new olstyle.Circle({
@@ -90,7 +95,7 @@ export default {
     addVoronoiLayer() {
       let data = projdata.map(d => [d.x, d.y]);
       let cells = d3.voronoi()
-        .extent([[this.mapConfig.extent[0], this.mapConfig.extent[3]], [this.mapConfig.extent[2], this.mapConfig.extent[1]]])
+        .extent([[this.mapConfig.extent[0], this.mapConfig.extent[1]], [this.mapConfig.extent[2], this.mapConfig.extent[3]]])
         .polygons(data);
       let vectorSource = new olsource.Vector();
       this.layers.voronoiLayer = new ollayer.Vector({
@@ -116,67 +121,69 @@ export default {
     addColorLump() {
       let data = projdata.map(d => [d.x, d.y]);
       let cells = d3.voronoi()
-        .extent([[this.mapConfig.extent[0], this.mapConfig.extent[3]], [this.mapConfig.extent[2], this.mapConfig.extent[1]]])
+        .extent([[this.mapConfig.extent[0], this.mapConfig.extent[1]], [this.mapConfig.extent[2], this.mapConfig.extent[3]]])
         .polygons(data);
       let vectorSource = new olsource.Vector();
       this.layers.colorLumpLayer = new ollayer.Vector({
         source: vectorSource,
       });
-      console.log(similarityMatrix.length)
-      // for(let i=0,len1=similarityMatrix.length; i<len1; i++) {
-      //   for(let j=i+1,len2=similarityMatrix[i].length; j<len2; j++) {
-      //     let commonEdge = _.intersectionBy(cells[i], cells[j], JSON.stringify)
-      //     if(commonEdge.length != 0) {
-      //       let colorLump1 = [cells[i].data, commonEdge[0], commonEdge[1], cells[i].data];
-      //       let colorLump2 = [cells[j].data, commonEdge[0], commonEdge[1], cells[j].data];
-      //       let feature1 = new ol.Feature({
-      //         geometry: new olgeom.Polygon([colorLump1])
-      //       });
-      //       feature1.setStyle(new olstyle.Style({
-      //         fill: new olstyle.Fill({
-      //           color: this.color(similarityMatrix[i][j])
-      //         })
-      //       }))
-      //       let feature2 = new ol.Feature({
-      //         geometry: new olgeom.Polygon([colorLump2])
-      //       });
-      //       feature2.setStyle(new olstyle.Style({
-      //         fill: new olstyle.Fill({
-      //           color: this.color(similarityMatrix[i][j])
-      //         })
-      //       }))
-      //       vectorSource.addFeature(feature1);
-      //       vectorSource.addFeature(feature2);
-      //     }
-      //   }
-      //   // 给边界空白多边形绘制颜色
-      //   let boundaryPoints = this.detectBoundaries(cells[i]);
-      //   if(boundaryPoints.length > 0) {
-      //     let boundaryCoords = cells[i].filter(d => {
-      //       let tmp = _.intersection(d, boundaryPoints)
-      //       return tmp.length > 0 ? true : false;
-      //     })
-      //     if(boundaryCoords.length == 2) { // 边
-      //       boundaryCoords.splice(0, 0, cells[i].data);
-      //       boundaryCoords.push(cells[i].data);
-      //     } else if(boundaryCoords.length == 3) { // 角
-      //       let vertex = boundaryCoords.filter(d => _.intersection(d, this.mapConfig.extent).length == 2)[0];
-      //       let others = boundaryCoords.filter(d => _.intersection(d, this.mapConfig.extent).length == 1);
-      //       boundaryCoords = [cells[i].data, others[0], vertex, others[1], cells[i].data];
-      //     }
-      //     let feature = new ol.Feature({
-      //       geometry: new olgeom.Polygon([boundaryCoords])
-      //     });
-      //     feature.setStyle(new olstyle.Style({
-      //       fill: new olstyle.Fill({
-      //         color: this.color(0)
-      //       })
-      //     }))
-      //     vectorSource.addFeature(feature);
-      //   }
-      // }
+      for(let i=0,len1=similarityMatrix.length; i<len1; i++) {
+        for(let j=i+1,len2=similarityMatrix[i].length; j<len2; j++) {
+          let commonEdge = _.intersectionBy(cells[i], cells[j], JSON.stringify)
+          if(commonEdge.length != 0) {
+            let colorLump1 = [cells[i].data, commonEdge[0], commonEdge[1], cells[i].data];
+            let colorLump2 = [cells[j].data, commonEdge[0], commonEdge[1], cells[j].data];
+            let feature1 = new ol.Feature({
+              geometry: new olgeom.Polygon([colorLump1])
+            });
+            feature1.setStyle(new olstyle.Style({
+              fill: new olstyle.Fill({
+                color: this.color(similarityMatrix[i][j])
+              })
+            }))
+            let feature2 = new ol.Feature({
+              geometry: new olgeom.Polygon([colorLump2])
+            });
+            feature2.setStyle(new olstyle.Style({
+              fill: new olstyle.Fill({
+                color: this.color(similarityMatrix[i][j])
+              })
+            }))
+            vectorSource.addFeature(feature1);
+            vectorSource.addFeature(feature2);
+          }
+        }
+        // 给边界空白多边形绘制颜色
+        let boundaryPoints = this.detectBoundaries(cells[i]);
+        if(boundaryPoints.length > 0) {
+          let boundaryCoords = cells[i].filter(d => {
+            let tmp = _.intersection(d, boundaryPoints)
+            return tmp.length > 0 ? true : false;
+          })
+          if(boundaryCoords.length == 2) { // 边
+            boundaryCoords.splice(0, 0, cells[i].data);
+            boundaryCoords.push(cells[i].data);
+          } else if(boundaryCoords.length == 3) { // 角
+            let vertex = boundaryCoords.filter(d => _.intersection(d, this.mapConfig.extent).length == 2)[0];
+            let others = boundaryCoords.filter(d => _.intersection(d, this.mapConfig.extent).length == 1);
+            boundaryCoords = [cells[i].data, others[0], vertex, others[1], cells[i].data];
+          }
+          let feature = new ol.Feature({
+            geometry: new olgeom.Polygon([boundaryCoords])
+          });
+          feature.setStyle(new olstyle.Style({
+            fill: new olstyle.Fill({
+              color: this.color(0)
+            })
+          }))
+          vectorSource.addFeature(feature);
+        }
+      }
       this.layers.colorLumpLayer.setOpacity(0.3);
       this.map.addLayer(this.layers.colorLumpLayer);
+    },
+    addClickEventOnColorLump() {
+
     },
     detectBoundaries(polygon) {
       return _.intersection(polygon.flat(), this.mapConfig.extent);

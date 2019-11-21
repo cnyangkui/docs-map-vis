@@ -1,16 +1,17 @@
 <template>
   <div class="navigation">
     <h1>Navigation</h1>
+    <h3>Map</h3>
     <ul>
-      <li><a href="/contour">Contour</a></li>
       <li><a href="/voronoi">Voronoi</a></li>
       <li><a href="/triangulation">Triangulation</a></li>
-      <li><a href="/voronoiRoad">Voronoi with Road</a></li>
-      <!-- <li><a href="https://forum.vuejs.org" target="_blank" rel="noopener">Forum</a></li>
-      <li><a href="https://chat.vuejs.org" target="_blank" rel="noopener">Community Chat</a></li>
-      <li><a href="https://twitter.com/vuejs" target="_blank" rel="noopener">Twitter</a></li>
-      <li><a href="https://news.vuejs.org" target="_blank" rel="noopener">News</a></li> -->
     </ul>
+    <h3>Map++</h3>
+    <ul>
+      <li><a href="/voronoiRoad">Voronoi + Road</a></li>
+      <li><a href="/voronoiDocs">Voronoi + Documents</a></li>
+    </ul>
+    
   </div>
 </template>
 

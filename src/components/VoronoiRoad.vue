@@ -16,7 +16,7 @@ import * as olproj from 'ol/proj'
 import * as olgeom from 'ol/geom'
 import * as olstyle from 'ol/style'
 import projdata from '../assets/data/thucnews/projection_dense_tfidf_thucnews.json'
-import similarityMatrix from '../assets/data/thucnews/similarity_matrix_thucnews.json'
+import similarityMatrix from '../assets/data/thucnews/similarity_matrix_thucnews_5round.json'
 import longdisHighsimilarity from '../assets/js/dist2similarity.js'
 export default {
   name: 'voronoiRoad',
