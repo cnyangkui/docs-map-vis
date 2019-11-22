@@ -49,7 +49,9 @@ export default {
     loadSettings() {
       let xExt = d3.extent(projdata, d => d.x);
       let yExt = d3.extent(projdata, d => d.y);
-      this.mapConfig.extent = [xExt[0]*1.2, yExt[1]*1.2, xExt[1]*1.2, yExt[0]*1.2];
+      let x = (xExt[1] - xExt[0]) > (yExt[1] - yExt[0]) ? xExt: yExt;
+      let y = (xExt[1] - xExt[0]) < (yExt[1] - yExt[0]) ? xExt: yExt;
+      this.mapConfig.extent = [x[0]*1.2, y[0]*1.2, x[1]*1.2, y[1]*1.2];
       // this.color = d3.scaleLinear().domain([0, 0.2]).range(['yellow', 'green']);
       this.color= d3.scaleSequential().domain([0, 0.5]).interpolator(d3.interpolateYlGn);//interpolateBrBG,interpolateYlGn
 
@@ -91,7 +93,7 @@ export default {
     addTriangulationLayer() {
       let data = projdata.map(d => [d.x, d.y]);
       let cells = d3.voronoi()
-        .extent([[this.mapConfig.extent[0], this.mapConfig.extent[3]], [this.mapConfig.extent[2], this.mapConfig.extent[1]]])
+        .extent([[this.mapConfig.extent[0], this.mapConfig.extent[1]], [this.mapConfig.extent[2], this.mapConfig.extent[3]]])
         .triangles(data);
       let vectorSource = new olsource.Vector();
       this.layers.triangulationLayer = new ollayer.Vector({
@@ -99,9 +101,8 @@ export default {
       });
       
       cells.forEach(c => {
-        let start = c[0];
-        let polygon = c;
-        polygon.push(start);
+        let polygon = Object.assign([], c);
+        polygon.push(c[0]);
         let feature = new ol.Feature({
           geometry: new olgeom.Polygon([polygon])
         });
@@ -121,7 +122,7 @@ export default {
         coords2points.set(JSON.stringify(d), i);
       })
       let cells = d3.voronoi()
-        .extent([[this.mapConfig.extent[0], this.mapConfig.extent[3]], [this.mapConfig.extent[2], this.mapConfig.extent[1]]])
+        .extent([[this.mapConfig.extent[0], this.mapConfig.extent[1]], [this.mapConfig.extent[2], this.mapConfig.extent[3]]])
         .triangles(data);
       if(Array.from(coords2points).length != projdata.length) {
         console.log('不能赋色，有坐标完全一致的节点...');

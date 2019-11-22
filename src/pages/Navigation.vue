@@ -8,8 +8,8 @@
     </ul>
     <h3>Map++</h3>
     <ul>
-      <li><a href="/voronoiRoad">Voronoi + Road</a></li>
       <li><a href="/voronoiDocs">Voronoi + Documents</a></li>
+      <li><a href="/voronoiRoad">Voronoi + Road</a></li>
     </ul>
     
   </div>

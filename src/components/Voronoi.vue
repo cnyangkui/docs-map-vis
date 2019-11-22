@@ -103,9 +103,8 @@ export default {
       });
       
       cells.forEach(c => {
-        let start = c[0];
-        let polygon = c;
-        polygon.push(start);
+        let polygon = Object.assign([], c);
+        polygon.push(c[0]);
         let feature = new ol.Feature({
           geometry: new olgeom.Polygon([polygon])
         });

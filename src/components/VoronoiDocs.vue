@@ -26,6 +26,7 @@ import * as olstyle from 'ol/style'
 import * as olinteraction from 'ol/interaction';
 import projdata from '../assets/data/thucnews/projection_dense_tfidf_thucnews.json'
 import similarityMatrix from '../assets/data/thucnews/similarity_matrix_thucnews_5round.json'
+import longdisHighsimilarity from '../assets/js/dist2similarity.js'
 export default {
   name: 'voronoi',
   data() {
@@ -43,6 +44,7 @@ export default {
         maxZoom: 18,
       },
       color: null,
+      roadwithScale: null,
       selected: []
     }
   },
@@ -51,6 +53,7 @@ export default {
       this.loadSettings();
       this.initMap();
       this.addColorLump();
+      this.addRoadLayer();
       this.addVoronoiLayer();
       this.addDocPoint();
       this.addClickEventOnVoronoi();
@@ -64,6 +67,7 @@ export default {
       let y = (xExt[1] - xExt[0]) < (yExt[1] - yExt[0]) ? xExt: yExt;
       this.mapConfig.extent = [x[0]*1.2, y[0]*1.2, x[1]*1.2, y[1]*1.2];
       this.color= d3.scaleSequential().domain([0, 0.5]).interpolator(d3.interpolateYlGn);//interpolateBrBG,interpolateYlGn
+      this.roadwithScale = d3.scaleLinear().domain([0.2, 0.5]).range([1, 5]);
     },
     initMap() {
       this.map = new ol.Map({
@@ -111,9 +115,8 @@ export default {
       });
       
       cells.forEach((c, i) => {
-        let start = c[0];
-        let polygon = c;
-        polygon.push(start);
+        let polygon = Object.assign([], c);
+        polygon.push(c[0]);
         let feature = new ol.Feature({
           geometry: new olgeom.Polygon([polygon])
         });
@@ -193,6 +196,31 @@ export default {
       }
       this.layers.colorLumpLayer.setOpacity(0.3);
       this.map.addLayer(this.layers.colorLumpLayer);
+    },
+    addRoadLayer() {
+      let vectorSource = new olsource.Vector();
+      this.layers.roadLayer = new ollayer.Vector({
+        source: vectorSource,
+      }); 
+      longdisHighsimilarity().forEach(d => {
+        let pair = d.pair.split('-');
+        let p1 = [projdata[parseInt(pair[0])].x, projdata[parseInt(pair[0])].y];
+        let p2 = [projdata[parseInt(pair[1])].x, projdata[parseInt(pair[1])].y];
+        let feature = new ol.Feature({
+          geometry: new olgeom.LineString([p1, p2])
+        });
+        feature.setStyle(new olstyle.Style({
+          // fill: new olstyle.Fill({
+          //   color: 'rgb(255, 255, 0, 0.05)'
+          // }),
+          stroke: new olstyle.Stroke({
+            color: 'orange',
+            width: this.roadwithScale(similarityMatrix[pair[0]][pair[1]])
+          })
+        }))
+        vectorSource.addFeature(feature);
+      })
+      this.map.addLayer(this.layers.roadLayer);
     },
     addClickEventOnVoronoi() {
       let docsDisplay = document.getElementById('docs-display');

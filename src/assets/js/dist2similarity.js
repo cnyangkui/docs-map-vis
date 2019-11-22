@@ -1,6 +1,6 @@
 const d3 = require('d3')
 const projdata = require('../data/thucnews/projection_dense_tfidf_thucnews.json')
-const similarityMatrix = require('../data/thucnews/similarity_matrix_thucnews.json')
+const similarityMatrix = require('../data/thucnews/similarity_matrix_thucnews_5round.json')
 
 function getLongdisHighsimilarity(dist_quantile=0.2, similarity_threshold=0.2) {
   let dist2similarity = []
