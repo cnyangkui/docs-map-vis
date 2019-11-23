@@ -67,7 +67,6 @@ export default {
       let x = (xExt[1] - xExt[0]) > (yExt[1] - yExt[0]) ? xExt: yExt;
       let y = (xExt[1] - xExt[0]) < (yExt[1] - yExt[0]) ? xExt: yExt;
       this.mapConfig.extent = [x[0]*1.2, y[0]*1.2, x[1]*1.2, y[1]*1.2];
-      // this.color = d3.scaleLinear().domain([0, 0.2]).range(['yellow', 'green']);
       this.color= d3.scaleSequential().domain([0, 0.5]).interpolator(d3.interpolateYlGn);//interpolateBrBG,interpolateYlGn
       this.roadwithScale = d3.scaleLinear().domain([0.2, 0.5]).range([1, 5]);
     },
@@ -97,9 +96,9 @@ export default {
         for(let i=0,len=pg.length-1; i<len; i++) {
           let p1 = Object.assign([], pg[i]); // 多边形上的节点
           let p2 = Object.assign([], pg[i+1]); // 多边形上的节点
-          // if(_.intersection(p1, this.mapConfig.extent).length > 0 || _.intersection(p2, this.mapConfig.extent).length > 0) {
-          //   continue;
-          // }
+          if(_.intersection(p1, this.mapConfig.extent).length > 0 || _.intersection(p2, this.mapConfig.extent).length > 0) {
+            continue;
+          }
           let i1 = this.alldata.coords2index.get(JSON.stringify(p1));
           let i2 = this.alldata.coords2index.get(JSON.stringify(p2));
           let edge1 = i1 + '-' + i2;
@@ -128,7 +127,6 @@ export default {
           weight = similarityMatrix[docindex[0]][docindex[1]];
           // weight = Math.sqrt((projdata[docindex[0]].x-projdata[docindex[1]].x)**2 
           //   + (projdata[docindex[0]].y-projdata[docindex[1]].y) ** 2);
-          // console.log(weight);
         } else if (docindex.length == 1) {
           weight = 1/0;
         }
@@ -263,24 +261,23 @@ export default {
         let distance = 1/0;
         let start = pg1[0], end = pg2[0];
         for(let i=0,len1=pg1.length; i<len1; i++) {
-          // if(_.intersection(pg1[i], this.mapConfig.extent).length > 0) continue
+          if(_.intersection(pg1[i], this.mapConfig.extent).length > 0) continue
           for(let j=0,len2=pg2.length; j<len2; j++) {
-            // if(_.intersection(pg2[j], this.mapConfig.extent).length > 0) continue
+            if(_.intersection(pg2[j], this.mapConfig.extent).length > 0) continue
             let p1 = pg1[i];
             let p2 = pg2[j];
             let tmp = Math.sqrt((p1[0]-p2[0])**2 + (p1[1]-p2[1])**2);
             if(tmp < distance) {
+              distance = tmp;
               start = p1;
               end = p2;
             }
           }
         }
+        
         let startIndex = this.alldata.coords2index.get(JSON.stringify(start));
         let endIndex = this.alldata.coords2index.get(JSON.stringify(end));
         let pathstr = this.alldata.graph.shortestPath(startIndex+'', endIndex+'').concat([startIndex+'']).reverse();
-        if(pathstr.length == 1) {
-          console.log(start, end)
-        }
         let pathcoords = [];
         pathcoords.push(pg1.data)
         pathstr.forEach(pid => {
