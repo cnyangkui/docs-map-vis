@@ -43,6 +43,12 @@ export default {
         minZoom: 1,
         maxZoom: 18,
       },
+      alldata: {
+        polygons: [], // Voronoi多边形
+        coords2index: new Map(), // 多边形边上点的坐标到索引的映射
+        index2coords: new Map(), // 多边形边上点的索引到坐标的映射
+        edge2docindex: new Map(), // 与每条边共边的多边形索引
+      },
       color: null,
       roadwithScale: null,
       selected: []
@@ -52,6 +58,7 @@ export default {
     this.$nextTick(() => {
       this.loadSettings();
       this.initMap();
+      this.processData();
       this.addColorLump();
       this.addRoadLayer();
       this.addVoronoiLayer();
@@ -68,6 +75,56 @@ export default {
       this.mapConfig.extent = [x[0]*1.2, y[0]*1.2, x[1]*1.2, y[1]*1.2];
       this.color= d3.scaleSequential().domain([0, 0.5]).interpolator(d3.interpolateYlGn);//interpolateBrBG,interpolateYlGn
       this.roadwithScale = d3.scaleLinear().domain([0.2, 0.5]).range([1, 5]);
+    },
+    processData() {
+      let docCoords = projdata.map(d => [d.x, d.y]);
+      let cells = d3.voronoi()
+        .extent([[this.mapConfig.extent[0], this.mapConfig.extent[1]], [this.mapConfig.extent[2], this.mapConfig.extent[3]]])
+        .polygons(docCoords);
+      // 获得Voronoi的多边形
+      this.alldata.polygons = cells.map(c => {
+        let pg = Object.assign([], c);
+        pg.push(c[0]);
+        return pg;
+      })
+      let p_index = 0;
+      // 构建多边形边上点的坐标与索引的互相映射
+      this.alldata.polygons.forEach((pg, index) => {
+        pg.forEach((point, i) => {
+          let coords = Object.assign([], point);
+          this.alldata.coords2index.set(JSON.stringify(coords), p_index);
+          this.alldata.index2coords.set(p_index, coords);
+          p_index++;
+        })
+      })
+      // 对于多边形的每条边，获得与之共边的多边形的索引
+      this.alldata.polygons.forEach((pg, index) => {
+        for(let i=0,len=pg.length-1; i<len; i++) {
+          let p1 = Object.assign([], pg[i]); // 多边形上的节点
+          let p2 = Object.assign([], pg[i+1]); // 多边形上的节点
+          if(_.intersection(p1, this.mapConfig.extent).length > 0 || _.intersection(p2, this.mapConfig.extent).length > 0) {
+            continue;
+          }
+          let i1 = this.alldata.coords2index.get(JSON.stringify(p1));
+          let i2 = this.alldata.coords2index.get(JSON.stringify(p2));
+          let edge1 = i1 + '-' + i2;
+          let edge2 = i2 + '-' + i1;
+          if(this.alldata.edge2docindex.has(edge1)) {
+            let value = this.alldata.edge2docindex.get(edge1);
+            value.push(index);
+            this.alldata.edge2docindex.set(edge1, value);
+          } else {
+            this.alldata.edge2docindex.set(edge1, [index]);
+          }
+          if(this.alldata.edge2docindex.has(edge2)) {
+            let value = this.alldata.edge2docindex.get(edge2);
+            value.push(index);
+            this.alldata.edge2docindex.set(edge2, value);
+          } else {
+            this.alldata.edge2docindex.set(edge2, [index]);
+          }
+        }
+      })
     },
     initMap() {
       this.map = new ol.Map({
@@ -105,20 +162,15 @@ export default {
       this.map.addLayer(this.layers.docpointLayer);
     },
     addVoronoiLayer() {
-      let data = projdata.map(d => [d.x, d.y]);
-      let cells = d3.voronoi()
-        .extent([[this.mapConfig.extent[0], this.mapConfig.extent[1]], [this.mapConfig.extent[2], this.mapConfig.extent[3]]])
-        .polygons(data);
       let vectorSource = new olsource.Vector();
       this.layers.voronoiLayer = new ollayer.Vector({
         source: vectorSource,
+        zIndex: 2
       });
       
-      cells.forEach((c, i) => {
-        let polygon = Object.assign([], c);
-        polygon.push(c[0]);
+      this.alldata.polygons.forEach((pg, index) => {
         let feature = new ol.Feature({
-          geometry: new olgeom.Polygon([polygon])
+          geometry: new olgeom.Polygon([pg])
         });
         feature.setStyle(new olstyle.Style({
           fill: new olstyle.Fill({
@@ -128,71 +180,49 @@ export default {
             color: 'grey'
           })
         }))
-        feature.setId('voronoi-'+ i);
+        feature.setId('voronoi-'+ index);
         vectorSource.addFeature(feature);
       })
       this.map.addLayer(this.layers.voronoiLayer);
     },
     addColorLump() {
-      let data = projdata.map(d => [d.x, d.y]);
-      let cells = d3.voronoi()
-        .extent([[this.mapConfig.extent[0], this.mapConfig.extent[1]], [this.mapConfig.extent[2], this.mapConfig.extent[3]]])
-        .polygons(data);
       let vectorSource = new olsource.Vector();
       this.layers.colorLumpLayer = new ollayer.Vector({
         source: vectorSource,
+        zIndex: 1
       });
-      for(let i=0,len1=similarityMatrix.length; i<len1; i++) {
-        for(let j=i+1,len2=similarityMatrix[i].length; j<len2; j++) {
-          let commonEdge = _.intersectionBy(cells[i], cells[j], JSON.stringify)
-          if(commonEdge.length != 0) {
-            let colorLump1 = [cells[i].data, commonEdge[0], commonEdge[1], cells[i].data];
-            let colorLump2 = [cells[j].data, commonEdge[0], commonEdge[1], cells[j].data];
-            let feature1 = new ol.Feature({
-              geometry: new olgeom.Polygon([colorLump1])
-            });
-            feature1.setStyle(new olstyle.Style({
-              fill: new olstyle.Fill({
-                color: this.color(similarityMatrix[i][j])
-              })
-            }))
-            let feature2 = new ol.Feature({
-              geometry: new olgeom.Polygon([colorLump2])
-            });
-            feature2.setStyle(new olstyle.Style({
-              fill: new olstyle.Fill({
-                color: this.color(similarityMatrix[i][j])
-              })
-            }))
-            vectorSource.addFeature(feature1);
-            vectorSource.addFeature(feature2);
-          }
+      for(let [edge, docindex] of this.alldata.edge2docindex) {
+        let pg = null;
+        let weight = 0;
+        let [p1, p2] = edge.split('-');
+        p1 = parseInt(p1);
+        p2 = parseInt(p2);
+        if(docindex.length == 2) {
+          pg = [
+            this.alldata.index2coords.get(p1), 
+            [projdata[docindex[0]].x, projdata[docindex[0]].y],
+            this.alldata.index2coords.get(p2), 
+            [projdata[docindex[1]].x, projdata[docindex[1]].y],
+            this.alldata.index2coords.get(p1)
+          ];
+          weight = similarityMatrix[docindex[0]][docindex[1]];
+        } else if(docindex.length == 1) {
+          pg = [
+            this.alldata.index2coords.get(p1), 
+            [projdata[docindex[0]].x, projdata[docindex[0]].y],
+            this.alldata.index2coords.get(p2),
+            this.alldata.index2coords.get(p1)
+          ];
         }
-        // 给边界空白多边形绘制颜色
-        let boundaryPoints = this.detectBoundaries(cells[i]);
-        if(boundaryPoints.length > 0) {
-          let boundaryCoords = cells[i].filter(d => {
-            let tmp = _.intersection(d, boundaryPoints)
-            return tmp.length > 0 ? true : false;
+        let feature = new ol.Feature({
+          geometry: new olgeom.Polygon([pg])
+        });
+        feature.setStyle(new olstyle.Style({
+          fill: new olstyle.Fill({
+            color: this.color(weight)
           })
-          if(boundaryCoords.length == 2) { // 边
-            boundaryCoords.splice(0, 0, cells[i].data);
-            boundaryCoords.push(cells[i].data);
-          } else if(boundaryCoords.length == 3) { // 角
-            let vertex = boundaryCoords.filter(d => _.intersection(d, this.mapConfig.extent).length == 2)[0];
-            let others = boundaryCoords.filter(d => _.intersection(d, this.mapConfig.extent).length == 1);
-            boundaryCoords = [cells[i].data, others[0], vertex, others[1], cells[i].data];
-          }
-          let feature = new ol.Feature({
-            geometry: new olgeom.Polygon([boundaryCoords])
-          });
-          feature.setStyle(new olstyle.Style({
-            fill: new olstyle.Fill({
-              color: this.color(0)
-            })
-          }))
-          vectorSource.addFeature(feature);
-        }
+        }))
+        vectorSource.addFeature(feature);
       }
       this.layers.colorLumpLayer.setOpacity(0.3);
       this.map.addLayer(this.layers.colorLumpLayer);

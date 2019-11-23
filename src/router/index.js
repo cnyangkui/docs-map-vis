@@ -4,9 +4,8 @@ import Navigation from '../pages/Navigation'
 import Contour from '../components/Contour.vue'
 import Voronoi from '../components/Voronoi.vue'
 import Triangulation from '../components/Triangulation.vue'
-import VoronoiRoad from '../components/VoronoiRoad.vue'
 import VoronoiDocs from '../components/VoronoiDocs.vue'
-
+import VoronoiRoad from '../components/VoronoiRoad.vue'
 
 Vue.use(VueRouter)
 
@@ -18,8 +17,8 @@ const router = new VueRouter({
     { path: '/contour', name: 'contour', component: Contour },
     { path: '/voronoi', name: 'voronoi', component: Voronoi },
     { path: '/triangulation', name: 'triangulation', component: Triangulation },
-    { path: '/voronoiRoad', name: 'voronoiRoad', component: VoronoiRoad },
     { path: '/voronoiDocs', name: 'voronoiDocs', component: VoronoiDocs },
+    { path: '/voronoiRoad', name: 'voronoiRoad', component: VoronoiRoad },
   ]
 });
 
