@@ -15,6 +15,7 @@ import * as olextent from 'ol/extent';
 import * as olproj from 'ol/proj'
 import * as olgeom from 'ol/geom'
 import * as olstyle from 'ol/style'
+import * as olinteraction from 'ol/interaction';
 import projdata from '../assets/data/thucnews/projection_dense_tfidf_thucnews.json'
 import similarityMatrix from '../assets/data/thucnews/similarity_matrix_thucnews_5round.json'
 import longdisHighsimilarity from '../assets/js/dist2similarity.js'
@@ -53,11 +54,11 @@ export default {
       this.loadSettings();
       this.processData();
       this.initMap();
-      this.addVoronoiLayer();
       this.addColorLump();
+      this.addVoronoiLayer();
       this.addRoadLayer();
       this.addDocPoint();
-      
+      this.addClickEventOnRoad();
     })
   },
   methods: {
@@ -119,14 +120,17 @@ export default {
           }
         }
       })
+      let distScale = d3.scaleLinear().domain([0, this.mapConfig.extent[2]-this.mapConfig.extent[0]]).range([0, 1]);
       // 计算多边形每条边上的权值，根据文档相似度赋予，从而构造图数据
       for(let [edge, docindex] of this.alldata.edge2docindex) {
         let [p1, p2] = edge.split('-');
         let weight = 0;
         if(docindex.length == 2) {
-          weight = similarityMatrix[docindex[0]][docindex[1]];
-          // weight = Math.sqrt((projdata[docindex[0]].x-projdata[docindex[1]].x)**2 
+          // weight = similarityMatrix[docindex[0]][docindex[1]]; // 相似度作为边权重
+          // weight = Math.sqrt((projdata[docindex[0]].x-projdata[docindex[1]].x)**2  // 2D 欧式距离作为边权重
           //   + (projdata[docindex[0]].y-projdata[docindex[1]].y) ** 2);
+          weight = distScale(Math.sqrt((projdata[docindex[0]].x-projdata[docindex[1]].x)**2 // a*相似度+(1-a)*距离
+            + (projdata[docindex[0]].y-projdata[docindex[1]].y) ** 2)) * 0.5 + similarityMatrix[docindex[0]][docindex[1]] * 0.5;
         } else if (docindex.length == 1) {
           weight = 1/0;
         }
@@ -149,9 +153,10 @@ export default {
       this.map = new ol.Map({
         target: 'voronoi-road-map',
         view: new ol.View({
-          projection: new olproj.Projection({
-            extent: this.mapConfig.extent
-          }),
+          // projection: new olproj.Projection({
+          //   extent: this.mapConfig.extent
+          // }),
+          extent: this.mapConfig.extent,
           center: olextent.getCenter(this.mapConfig.extent),
           zoom: 2
         }),
@@ -166,6 +171,7 @@ export default {
       let vectorSource = new olsource.Vector();
       this.layers.docpointLayer = new ollayer.Vector({
         source: vectorSource,
+        zIndex: 3
       });
       let xExt = d3.extent(projdata, d => d.x);
       let yExt = d3.extent(projdata, d => d.y);
@@ -188,6 +194,7 @@ export default {
       let vectorSource = new olsource.Vector();
       this.layers.voronoiLayer = new ollayer.Vector({
         source: vectorSource,
+        zIndex: 2
       });
       
       this.alldata.polygons.forEach(pg => {
@@ -195,9 +202,9 @@ export default {
           geometry: new olgeom.Polygon([pg])
         });
         feature.setStyle(new olstyle.Style({
-          // fill: new olstyle.Fill({
-          //   color: 'rgb(255, 255, 0, 0.05)'
-          // }),
+          fill: new olstyle.Fill({
+            color: 'rgb(255, 255, 255, 0)'
+          }),
           stroke: new olstyle.Stroke({
             color: 'grey'
           })
@@ -210,6 +217,7 @@ export default {
       let vectorSource = new olsource.Vector();
       this.layers.colorLumpLayer = new ollayer.Vector({
         source: vectorSource,
+        zIndex: 1
       });
       for(let [edge, docindex] of this.alldata.edge2docindex) {
         let pg = null;
@@ -251,6 +259,7 @@ export default {
       let vectorSource = new olsource.Vector();
       this.layers.roadLayer = new ollayer.Vector({
         source: vectorSource,
+        zIndex: 4
       }); 
       longdisHighsimilarity().forEach(d => {
         let pair = d.pair.split('-');
@@ -289,13 +298,28 @@ export default {
         });
         feature.setStyle(new olstyle.Style({
           stroke: new olstyle.Stroke({
-            color: 'orange',
+            color: 'rgb(255, 165, 0, 0.5)',
             width: this.roadwithScale(similarityMatrix[pair[0]][pair[1]])
           })
         }))
         vectorSource.addFeature(feature);
       })
       this.map.addLayer(this.layers.roadLayer);
+    },
+    addClickEventOnRoad() {
+      let selectSingleClick = new olinteraction.Select();
+      let instance = this;
+      selectSingleClick.on('select', function(e) {
+        // e.selected.forEach(feature => {
+        //   feature.setStyle(new olstyle.Style({
+        //     stroke: new olstyle.Stroke({
+        //       color: 'steelblue',
+        //       width: 2,
+        //     })
+        //   }));
+        // })
+      });
+      this.map.addInteraction(selectSingleClick);
     },
   }
 }
