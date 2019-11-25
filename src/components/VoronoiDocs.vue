@@ -1,6 +1,6 @@
 <template>
   <div class="voronoi-docs">
-    <div class="title"><h3>Voronoi</h3></div>
+    <div class="title"><h3>Voronoi + Documents</h3></div>
     <div class="content">
       <div id="voronoi-docs-map"></div>
       <div id="docs-panel">

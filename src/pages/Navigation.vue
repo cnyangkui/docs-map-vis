@@ -5,6 +5,7 @@
     <ul>
       <li><a href="/voronoi">Voronoi</a></li>
       <li><a href="/triangulation">Triangulation</a></li>
+      <li><a href="/IterativeVoronoi">IterativeVoronoi</a></li>
     </ul>
     <h3>Map++</h3>
     <ul>
