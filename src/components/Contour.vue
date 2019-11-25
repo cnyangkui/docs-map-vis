@@ -19,7 +19,7 @@ import contourdata from '../assets/data/thucnews/contour.json'
 import projdata from '../assets/data/thucnews/projection_dense_tfidf_thucnews.json'
 import indexdata from '../assets/data/thucnews/index.json'
 export default {
-  name: 'contour',
+  name: 'Contour',
   data() {
     return {
       map: null,

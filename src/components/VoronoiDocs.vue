@@ -28,7 +28,7 @@ import projdata from '../assets/data/thucnews/projection_dense_tfidf_thucnews.js
 import similarityMatrix from '../assets/data/thucnews/similarity_matrix_thucnews_5round.json'
 import longdisHighsimilarity from '../assets/js/dist2similarity.js'
 export default {
-  name: 'voronoi',
+  name: 'VoronoiDocs',
   data() {
     return {
       map: null,

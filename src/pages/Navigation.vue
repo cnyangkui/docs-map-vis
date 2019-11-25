@@ -11,6 +11,7 @@
     <ul>
       <li><a href="/voronoiDocs">Voronoi + Documents</a></li>
       <li><a href="/voronoiRoad">Voronoi + Road</a></li>
+      <li><a href="/voronoiComparison">Voronoi VS IterativeVoronoi</a></li>
     </ul>
     
   </div>

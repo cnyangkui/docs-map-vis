@@ -7,6 +7,7 @@ import IterativeVoronoi from '../components/IterativeVoronoi.vue'
 import Triangulation from '../components/Triangulation.vue'
 import VoronoiDocs from '../components/VoronoiDocs.vue'
 import VoronoiRoad from '../components/VoronoiRoad.vue'
+import VoronoiComparison from '../components/VoronoiComparison.vue'
 
 Vue.use(VueRouter)
 
@@ -21,6 +22,7 @@ const router = new VueRouter({
     { path: '/triangulation', name: 'triangulation', component: Triangulation },
     { path: '/voronoiDocs', name: 'voronoiDocs', component: VoronoiDocs },
     { path: '/voronoiRoad', name: 'voronoiRoad', component: VoronoiRoad },
+    { path: '/voronoiComparison', name: 'voronoiComparison', component: VoronoiComparison },
   ]
 });
 

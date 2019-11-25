@@ -18,7 +18,7 @@ import * as olstyle from 'ol/style'
 import projdata from '../assets/data/thucnews/projection_dense_tfidf_thucnews.json'
 import similarityMatrix from '../assets/data/thucnews/similarity_matrix_thucnews_5round.json'
 export default {
-  name: 'voronoi',
+  name: 'Voronoi',
   data() {
     return {
       map: null,
@@ -102,7 +102,7 @@ export default {
         source: vectorSource,
       });
       
-      cells.forEach(c => {
+      cells.forEach((c, index) => {
         let polygon = Object.assign([], c);
         polygon.push(c[0]);
         let feature = new ol.Feature({
@@ -113,6 +113,7 @@ export default {
             color: 'grey'
           })
         }))
+        feature.setId('voronoi-' + index);
         vectorSource.addFeature(feature);
       })
       this.map.addLayer(this.layers.voronoiLayer);

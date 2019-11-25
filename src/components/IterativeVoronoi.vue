@@ -23,7 +23,7 @@ import similarityMatrix from "../assets/data/thucnews/similarity_matrix_thucnews
 import longdisHighsimilarity from "../assets/js/dist2similarity.js";
 import Graph from "../assets/js/dijkstra.js";
 export default {
-  name: "voronoiRoad",
+  name: "IterativeVoronoi",
   data() {
     return {
       map: null,
@@ -35,9 +35,6 @@ export default {
       },
       mapConfig: {
         extent: [], //[left, bottom, right, top]
-        zoom: 1,
-        minZoom: 1,
-        maxZoom: 18
       },
       alldata: {
         polygons: [], // Voronoi多边形
@@ -51,6 +48,12 @@ export default {
       roadwithScale: null
     };
   },
+  created: function () {
+      this.$root.eventHub.$on('compareVoronoi', this.compareVoronoi);
+   },
+   beforeDestroy: function () {
+      this.$root.eventHub.$off('compareVoronoi');
+   },
   mounted() {
     this.$nextTick(() => {
       this.loadSettings();
@@ -58,7 +61,7 @@ export default {
       this.initMap();
       this.addColorLump();
       this.addVoronoiLayer();
-      this.addRoadLayer();
+      // this.addRoadLayer();
       this.addDocPoint();
       this.addClickEventOnRoad();
     });
@@ -184,7 +187,7 @@ export default {
     },
     initMap() {
       this.map = new ol.Map({
-        target: "voronoi-road-map",
+        target: "iterative-voronoi-road-map",
         view: new ol.View({
           projection: new olproj.Projection({
             extent: this.mapConfig.extent
@@ -193,11 +196,6 @@ export default {
           center: olextent.getCenter(this.mapConfig.extent),
           zoom: 2
         })
-        // layers: [
-        //   new ollayer.Tile({
-        //     source: new olsource.OSM()
-        //   })
-        // ]
       });
     },
     addDocPoint() {
@@ -235,7 +233,7 @@ export default {
         zIndex: 2
       });
 
-      this.alldata.polygons.forEach(pg => {
+      this.alldata.polygons.forEach((pg, index) => {
         let feature = new ol.Feature({
           geometry: new olgeom.Polygon([pg])
         });
@@ -249,6 +247,7 @@ export default {
             })
           })
         );
+        feature.setId('voronoi-' + index);
         vectorSource.addFeature(feature);
       });
       this.map.addLayer(this.layers.voronoiLayer);
@@ -361,16 +360,21 @@ export default {
       let selectSingleClick = new olinteraction.Select();
       let instance = this;
       selectSingleClick.on("select", function(e) {
-        // e.selected.forEach(feature => {
-        //   feature.setStyle(new olstyle.Style({
-        //     stroke: new olstyle.Stroke({
-        //       color: 'steelblue',
-        //       width: 2,
-        //     })
-        //   }));
-        // })
+        e.selected.forEach(feature => {
+          // instance.$root.eventHub.$emit("compareVoronoi", feature.getId());
+        })
       });
       this.map.addInteraction(selectSingleClick);
+    },
+    compareVoronoi(featureId) {
+      let source = this.layers.voronoiLayer.getSource();
+      let feature = source.getFeatureById(featureId);
+      feature.setStyle(new olstyle.Style({
+        stroke: new olstyle.Stroke({
+          color: 'steelblue',
+          width: 2,
+        })
+      }))
     }
   }
 };

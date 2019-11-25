@@ -21,7 +21,7 @@ import similarityMatrix from '../assets/data/thucnews/similarity_matrix_thucnews
 import longdisHighsimilarity from '../assets/js/dist2similarity.js'
 import Graph from '../assets/js/dijkstra.js'
 export default {
-  name: 'voronoiRoad',
+  name: 'VoronoiRoad',
   data() {
     return {
       map: null,
@@ -45,6 +45,7 @@ export default {
         graphdata: new Map(), // 根据多边形构造的图数据
         graph: new Graph(), // 根据多边形的边构造图
       },
+      selected: [],
       color: null,
       roadwithScale: null,
     }
@@ -56,7 +57,7 @@ export default {
       this.initMap();
       this.addColorLump();
       this.addVoronoiLayer();
-      this.addRoadLayer();
+      // this.addRoadLayer();
       this.addDocPoint();
       this.addClickEventOnRoad();
     })
@@ -197,7 +198,7 @@ export default {
         zIndex: 2
       });
       
-      this.alldata.polygons.forEach(pg => {
+      this.alldata.polygons.forEach((pg, index) => {
         let feature = new ol.Feature({
           geometry: new olgeom.Polygon([pg])
         });
@@ -209,6 +210,7 @@ export default {
             color: 'grey'
           })
         }))
+        feature.setId('voronoi-' + index);
         vectorSource.addFeature(feature);
       })
       this.map.addLayer(this.layers.voronoiLayer);
@@ -307,17 +309,37 @@ export default {
       this.map.addLayer(this.layers.roadLayer);
     },
     addClickEventOnRoad() {
+      // let selectSingleClick = new olinteraction.Select();
+      // let instance = this;
+      // selectSingleClick.on('select', function(e) {
+      //   e.selected.forEach(feature => {
+      //     instance.$root.eventHub.$emit('compareVoronoi', feature.getId());
+      //     // feature.setStyle(new olstyle.Style({
+      //     //   stroke: new olstyle.Stroke({
+      //     //     color: 'steelblue',
+      //     //     width: 2,
+      //     //   })
+      //     // }));
+      //   })
+      // });
+      // this.map.addInteraction(selectSingleClick);
       let selectSingleClick = new olinteraction.Select();
       let instance = this;
       selectSingleClick.on('select', function(e) {
-        // e.selected.forEach(feature => {
-        //   feature.setStyle(new olstyle.Style({
-        //     stroke: new olstyle.Stroke({
-        //       color: 'steelblue',
-        //       width: 2,
-        //     })
-        //   }));
-        // })
+        if(e.selected && e.selected.length > 0) {
+          instance.selected = instance.selected.concat(e.selected);
+          e.selected.forEach(feature => {
+            instance.$root.eventHub.$emit('compareVoronoi', feature.getId());
+          })
+        }
+        instance.selected.forEach(feature => {
+          feature.setStyle(new olstyle.Style({
+            stroke: new olstyle.Stroke({
+              color: 'steelblue',
+              width: 2,
+            })
+          }));
+        })
       });
       this.map.addInteraction(selectSingleClick);
     },
