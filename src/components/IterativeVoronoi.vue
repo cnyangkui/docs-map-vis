@@ -34,7 +34,7 @@ export default {
         roadLayer: null
       },
       mapConfig: {
-        extent: [], //[left, bottom, right, top]
+        extent: [] //[left, bottom, right, top]
       },
       alldata: {
         polygons: [], // Voronoi多边形
@@ -48,12 +48,12 @@ export default {
       roadwithScale: null
     };
   },
-  created: function () {
-      this.$root.eventHub.$on('compareVoronoi', this.compareVoronoi);
-   },
-   beforeDestroy: function () {
-      this.$root.eventHub.$off('compareVoronoi');
-   },
+  created: function() {
+    this.$root.eventHub.$on("compareVoronoi", this.compareVoronoi);
+  },
+  beforeDestroy: function() {
+    this.$root.eventHub.$off("compareVoronoi");
+  },
   mounted() {
     this.$nextTick(() => {
       this.loadSettings();
@@ -61,7 +61,7 @@ export default {
       this.initMap();
       this.addColorLump();
       this.addVoronoiLayer();
-      // this.addRoadLayer();
+      this.addRoadLayer();
       this.addDocPoint();
       this.addClickEventOnRoad();
     });
@@ -91,13 +91,39 @@ export default {
           [this.mapConfig.extent[2], this.mapConfig.extent[3]]
         ])
         .polygons(docCoords);
+
+      let instance = this;
+      let doclink = new Set();
+      (function() {
+        let docCoords2index = new Map();
+        cells.forEach((d, i) => {
+          docCoords2index.set(JSON.stringify(d.data), i);
+        });
+        let triangles = d3
+          .voronoi()
+          .extent([
+            [instance.mapConfig.extent[0], instance.mapConfig.extent[1]],
+            [instance.mapConfig.extent[2], instance.mapConfig.extent[3]]
+          ])
+          .triangles(docCoords);
+        triangles.forEach((d, i) => {
+          let [p1, p2, p3] = d;
+          let i1 = docCoords2index.get(JSON.stringify(p1));
+          let i2 = docCoords2index.get(JSON.stringify(p2));
+          let i3 = docCoords2index.get(JSON.stringify(p3));
+          doclink.add([i1, i2].sort((a,b) => a-b) + "");
+          doclink.add([i2, i3].sort((a,b) => a-b) + "");
+          doclink.add([i3, i1].sort((a,b) => a-b) + "");
+        });
+        doclink = Array.from(doclink);
+      })();
       // 获得Voronoi的多边形
       this.alldata.polygons = cells.map(c => {
         let pg = Object.assign([], c);
         pg.push(c[0]);
         return pg;
       });
-
+      // Voronoi每次选取多边形中心，重新绘制，多次迭代后变成六边形地图
       for (let i = 0; i < 600; i++) {
         docCoords = this.alldata.polygons.map(d => d3.polygonCentroid(d));
         cells = d3
@@ -156,34 +182,62 @@ export default {
           }
         }
       });
-      let distScale = d3.scaleLinear().domain([0, this.mapConfig.extent[2]-this.mapConfig.extent[0]]).range([0, 1]);
       // 计算多边形每条边上的权值，根据文档相似度赋予，从而构造图数据
-      for(let [edge, docindex] of this.alldata.edge2docindex) {
-        let [p1, p2] = edge.split('-');
+      for (let [edge, docindex] of this.alldata.edge2docindex) {
+        let [p1, p2] = edge.split("-");
         let weight = 0;
-        if(docindex.length == 2) {
+        if (docindex.length == 2) {
+          let c1 = this.alldata.index2coords.get(parseInt(p1));
+          let c2 = this.alldata.index2coords.get(parseInt(p2));
           weight = similarityMatrix[docindex[0]][docindex[1]]; // 相似度作为边权重
-          // weight = Math.sqrt((projdata[docindex[0]].x-projdata[docindex[1]].x)**2  // 2D 欧式距离作为边权重
-          //   + (projdata[docindex[0]].y-projdata[docindex[1]].y) ** 2);
-          // weight = distScale(Math.sqrt((projdata[docindex[0]].x-projdata[docindex[1]].x)**2 // a*相似度+(1-a)*距离
-          //   + (projdata[docindex[0]].y-projdata[docindex[1]].y) ** 2)) * 0.5 + similarityMatrix[docindex[0]][docindex[1]] * 0.5;
+          // weight = Math.sqrt((c/1[0]-c2[0])**2 + (c1[1]-c2[1])**2) // 2D 欧式距离作为边权重
+          // weight = Math.sqrt((c1[0]-c2[0])**2 + (c1[1]-c2[1])**2) * similarityMatrix[docindex[0]][docindex[1]];
         } else if (docindex.length == 1) {
-          weight = 1/0;
+          weight = 1 / 0;
         }
-        if(this.alldata.graphdata.has(p1)) { // 图数据中是否有起点为p1的数据
-            let target = this.alldata.graphdata.get(p1); //起点为p1的数据的终点
-            target[p2] = weight; // 加入一个新的终点
-            this.alldata.graphdata.set(p1, target);
-          } else {
-            let target = {}
-            target[p2] = weight;
-            this.alldata.graphdata.set(p1, target);
-          }
+        if (this.alldata.graphdata.has(p1)) {
+          // 图数据中是否有起点为p1的数据
+          let target = this.alldata.graphdata.get(p1); //起点为p1的数据的终点
+          target[p2] = weight; // 加入一个新的终点
+          this.alldata.graphdata.set(p1, target);
+        } else {
+          let target = {};
+          target[p2] = weight;
+          this.alldata.graphdata.set(p1, target);
         }
+      }
       // 构造Graph
-      for(let [key, value] of this.alldata.graphdata) {
+      for (let [key, value] of this.alldata.graphdata) {
         this.alldata.graph.addVertex(key, value);
       }
+
+      let doclink2 = new Set();
+      (function() {
+        let docCoords2 = instance.alldata.polygons.map(d => d.data);
+        let docCoords2index2 = new Map();
+        instance.alldata.polygons.forEach((d, i) => {
+          docCoords2index2.set(JSON.stringify(d.data), i);
+        });
+        let triangles2 = d3
+          .voronoi()
+          .extent([
+            [instance.mapConfig.extent[0], instance.mapConfig.extent[1]],
+            [instance.mapConfig.extent[2], instance.mapConfig.extent[3]]
+          ])
+          .triangles(docCoords2);
+        triangles2.forEach((d, i) => {
+          let [p1, p2, p3] = d;
+          let i1 = docCoords2index2.get(JSON.stringify(p1));
+          let i2 = docCoords2index2.get(JSON.stringify(p2));
+          let i3 = docCoords2index2.get(JSON.stringify(p3));
+          doclink2.add([i1, i2].sort((a,b) => a-b) + "");
+          doclink2.add([i2, i3].sort((a,b) => a-b) + "");
+          doclink2.add([i3, i1].sort((a,b) => a-b) + "");
+        });
+        doclink2 = Array.from(doclink2);
+        let radio = _.intersection(doclink, doclink2).length / doclink.length;
+        console.log("结构保持率：" + radio.toFixed(2));
+      })();
     },
     initMap() {
       this.map = new ol.Map({
@@ -247,7 +301,7 @@ export default {
             })
           })
         );
-        feature.setId('voronoi-' + index);
+        feature.setId("voronoi-" + index);
         vectorSource.addFeature(feature);
       });
       this.map.addLayer(this.layers.voronoiLayer);
@@ -362,19 +416,21 @@ export default {
       selectSingleClick.on("select", function(e) {
         e.selected.forEach(feature => {
           // instance.$root.eventHub.$emit("compareVoronoi", feature.getId());
-        })
+        });
       });
       this.map.addInteraction(selectSingleClick);
     },
     compareVoronoi(featureId) {
       let source = this.layers.voronoiLayer.getSource();
       let feature = source.getFeatureById(featureId);
-      feature.setStyle(new olstyle.Style({
-        stroke: new olstyle.Stroke({
-          color: 'steelblue',
-          width: 2,
+      feature.setStyle(
+        new olstyle.Style({
+          stroke: new olstyle.Stroke({
+            color: "steelblue",
+            width: 2
+          })
         })
-      }))
+      );
     }
   }
 };

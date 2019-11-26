@@ -133,7 +133,7 @@ export default {
           projection: new olproj.Projection({
             extent: this.mapConfig.extent
           }),
-          // extent: this.mapConfig.extent,
+          extent: this.mapConfig.extent,
           center: olextent.getCenter(this.mapConfig.extent),
           zoom: 2,
         }),
@@ -322,14 +322,14 @@ export default {
 
     #voronoi-docs-map {
       display: inline-block;
-      width: 65%;
+      width: 60%;
       height: 100%;
       float: left;
     }
 
     #docs-panel {
       display: inline-block;
-      width: 35%;
+      width: 40%;
       height: 100%;
       float: right;
       overflow-y: scroll; 

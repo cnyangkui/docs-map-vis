@@ -64,7 +64,7 @@ export default {
           projection: new olproj.Projection({
             extent: this.mapConfig.extent
           }),
-          // extent: this.mapConfig.extent,
+          extent: this.mapConfig.extent,
           center: olextent.getCenter(this.mapConfig.extent),
           zoom: 2,
         }),

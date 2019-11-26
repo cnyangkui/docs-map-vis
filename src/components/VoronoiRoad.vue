@@ -57,7 +57,7 @@ export default {
       this.initMap();
       this.addColorLump();
       this.addVoronoiLayer();
-      // this.addRoadLayer();
+      this.addRoadLayer();
       this.addDocPoint();
       this.addClickEventOnRoad();
     })
@@ -121,17 +121,17 @@ export default {
           }
         }
       })
-      let distScale = d3.scaleLinear().domain([0, this.mapConfig.extent[2]-this.mapConfig.extent[0]]).range([0, 1]);
+      // let distScale = d3.scaleLinear().domain([0, this.mapConfig.extent[2]-this.mapConfig.extent[0]]).range([0, 1]);
       // 计算多边形每条边上的权值，根据文档相似度赋予，从而构造图数据
       for(let [edge, docindex] of this.alldata.edge2docindex) {
         let [p1, p2] = edge.split('-');
         let weight = 0;
         if(docindex.length == 2) {
+          let c1 = this.alldata.index2coords.get(parseInt(p1));
+          let c2 = this.alldata.index2coords.get(parseInt(p2));
           // weight = similarityMatrix[docindex[0]][docindex[1]]; // 相似度作为边权重
-          // weight = Math.sqrt((projdata[docindex[0]].x-projdata[docindex[1]].x)**2  // 2D 欧式距离作为边权重
-          //   + (projdata[docindex[0]].y-projdata[docindex[1]].y) ** 2);
-          weight = distScale(Math.sqrt((projdata[docindex[0]].x-projdata[docindex[1]].x)**2 // a*相似度+(1-a)*距离
-            + (projdata[docindex[0]].y-projdata[docindex[1]].y) ** 2)) * 0.5 + similarityMatrix[docindex[0]][docindex[1]] * 0.5;
+          // weight = Math.sqrt((c1[0]-c2[0])**2 + (c1[1]-c2[1])**2) // 2D 欧式距离作为边权重
+          weight = Math.sqrt((c1[0]-c2[0])**2 + (c1[1]-c2[1])**2) * similarityMatrix[docindex[0]][docindex[1]];
         } else if (docindex.length == 1) {
           weight = 1/0;
         }

@@ -1,19 +1,14 @@
 <template>
   <div class="navigation">
     <h1>Navigation</h1>
-    <h3>Map</h3>
     <ul>
       <li><a href="/voronoi">Voronoi</a></li>
       <li><a href="/triangulation">Triangulation</a></li>
-      <li><a href="/IterativeVoronoi">IterativeVoronoi</a></li>
-    </ul>
-    <h3>Map++</h3>
-    <ul>
       <li><a href="/voronoiDocs">Voronoi + Documents</a></li>
       <li><a href="/voronoiRoad">Voronoi + Road</a></li>
+      <li><a href="/IterativeVoronoi">IterativeVoronoi + Road</a></li>
       <li><a href="/voronoiComparison">Voronoi VS IterativeVoronoi</a></li>
     </ul>
-    
   </div>
 </template>
 
@@ -34,15 +29,15 @@ export default {
 }
 h1 {
   display: inline-block;
-  margin-top: 200px;
+  /* margin-top: 200px; */
 }
 ul {
   list-style-type: none;
   padding: 0;
 }
 li {
-  display: inline-block;
-  margin: 0 10px;
+  /* display: inline-block; */
+  /* margin: 0 10px; */
 }
 a {
   color: #42b983;
