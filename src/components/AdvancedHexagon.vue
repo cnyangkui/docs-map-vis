@@ -1,9 +1,9 @@
 <template>
-  <div class="iterative-voronoi-road">
+  <div class="advanced-hexagon">
     <div class="title">
-      <h3>IterativeVoronoi + Road</h3>
+      <h3>Advanced Hexagon</h3>
     </div>
-    <div id="iterative-voronoi-road-map"></div>
+    <div id="advanced-hexagon-map"></div>
   </div>
 </template>
 
@@ -23,7 +23,7 @@ import similarityMatrix from "../assets/data/thucnews/similarity_matrix_thucnews
 import longdisHighsimilarity from "../assets/js/dist2similarity.js";
 import Graph from "../assets/js/dijkstra.js";
 export default {
-  name: "IterativeVoronoi",
+  name: "AdvancedIterativeVoronoi",
   data() {
     return {
       map: null,
@@ -33,10 +33,10 @@ export default {
         colorLumpLayer: null,
         roadLayer: null
       },
-      mapConfig: {
-        extent: [] //[left, bottom, right, top]
-      },
+      dataExtent: [],
+      extent: [], //[left, bottom, right, top],
       alldata: {
+        points: [],
         polygons: [], // Voronoi多边形
         coords2index: new Map(), // 多边形边上点的坐标到索引的映射
         index2coords: new Map(), // 多边形边上点的索引到坐标的映射
@@ -72,7 +72,8 @@ export default {
       let yExt = d3.extent(projdata, d => d.y);
       let x = xExt[1] - xExt[0] > yExt[1] - yExt[0] ? xExt : yExt;
       let y = xExt[1] - xExt[0] < yExt[1] - yExt[0] ? xExt : yExt;
-      this.mapConfig.extent = [x[0] * 1.2, y[0] * 1.2, x[1] * 1.2, y[1] * 1.2];
+      this.dataExtent = [x[0], y[0], x[1], y[1]];
+      this.extent = [x[0] * 1.2, y[0] * 1.2, x[1] * 1.2, y[1] * 1.2];
       this.color = d3
         .scaleSequential()
         .domain([0, 0.5])
@@ -83,18 +84,17 @@ export default {
         .range([1, 5]);
     },
     processData() {
-      let docCoords = projdata.map(d => [d.x, d.y]);
-      let cells = d3
-        .voronoi()
-        .extent([
-          [this.mapConfig.extent[0], this.mapConfig.extent[1]],
-          [this.mapConfig.extent[2], this.mapConfig.extent[3]]
-        ])
-        .polygons(docCoords);
-
       let instance = this;
       let doclink = new Set();
       (function() {
+        let docCoords = projdata.map(d => [d.x, d.y]);
+        let cells = d3
+          .voronoi()
+          .extent([
+            [instance.extent[0], instance.extent[1]],
+            [instance.extent[2], instance.extent[3]]
+          ])
+          .polygons(docCoords);
         let docCoords2index = new Map();
         cells.forEach((d, i) => {
           docCoords2index.set(JSON.stringify(d.data), i);
@@ -102,8 +102,8 @@ export default {
         let triangles = d3
           .voronoi()
           .extent([
-            [instance.mapConfig.extent[0], instance.mapConfig.extent[1]],
-            [instance.mapConfig.extent[2], instance.mapConfig.extent[3]]
+            [instance.extent[0], instance.extent[1]],
+            [instance.extent[2], instance.extent[3]]
           ])
           .triangles(docCoords);
         triangles.forEach((d, i) => {
@@ -111,12 +111,41 @@ export default {
           let i1 = docCoords2index.get(JSON.stringify(p1));
           let i2 = docCoords2index.get(JSON.stringify(p2));
           let i3 = docCoords2index.get(JSON.stringify(p3));
-          doclink.add([i1, i2].sort((a,b) => a-b) + "");
-          doclink.add([i2, i3].sort((a,b) => a-b) + "");
-          doclink.add([i3, i1].sort((a,b) => a-b) + "");
+          doclink.add([i1, i2].sort((a, b) => a - b) + "");
+          doclink.add([i2, i3].sort((a, b) => a - b) + "");
+          doclink.add([i3, i1].sort((a, b) => a - b) + "");
         });
         doclink = Array.from(doclink);
       })();
+      let randomNumber = 800;
+      this.alldata.points = projdata.map(d => [d.x, d.y]);
+      for (let i = 0; i < randomNumber; i++) {
+        let tmp = Math.floor(i / (randomNumber / 4));
+        if (tmp == 0) {
+          let x = _.random(this.extent[0], this.dataExtent[2], true);
+          let y = _.random(this.extent[1], this.dataExtent[1], true);
+          this.alldata.points.push([x, y]);
+        } else if (tmp == 1) {
+          let x = _.random(this.dataExtent[2], this.extent[2], true);
+          let y = _.random(this.extent[1], this.dataExtent[3], true);
+          this.alldata.points.push([x, y]);
+        } else if (tmp == 2) {
+          let x = _.random(this.dataExtent[0], this.extent[2], true);
+          let y = _.random(this.dataExtent[3], this.extent[3], true);
+          this.alldata.points.push([x, y]);
+        } else {
+          let x = _.random(this.extent[0], this.dataExtent[0], true);
+          let y = _.random(this.dataExtent[1], this.extent[3], true);
+          this.alldata.points.push([x, y]);
+        }
+      }
+      let cells = d3
+        .voronoi()
+        .extent([
+          [instance.extent[0], instance.extent[1]],
+          [instance.extent[2], instance.extent[3]]
+        ])
+        .polygons(this.alldata.points);
       // 获得Voronoi的多边形
       this.alldata.polygons = cells.map(c => {
         let pg = Object.assign([], c);
@@ -124,13 +153,14 @@ export default {
         return pg;
       });
       // Voronoi每次选取多边形中心，重新绘制，多次迭代后变成六边形地图
+      let docCoords = [];
       for (let i = 0; i < 600; i++) {
         docCoords = this.alldata.polygons.map(d => d3.polygonCentroid(d));
         cells = d3
           .voronoi()
           .extent([
-            [this.mapConfig.extent[0], this.mapConfig.extent[1]],
-            [this.mapConfig.extent[2], this.mapConfig.extent[3]]
+            [this.extent[0], this.extent[1]],
+            [this.extent[2], this.extent[3]]
           ])
           .polygons(docCoords);
         // 获得Voronoi的多边形
@@ -157,8 +187,9 @@ export default {
           let p1 = Object.assign([], pg[i]); // 多边形上的节点
           let p2 = Object.assign([], pg[i + 1]); // 多边形上的节点
           if (
-            _.intersection(p1, this.mapConfig.extent).length > 0 ||
-            _.intersection(p2, this.mapConfig.extent).length > 0
+            _.intersection(p1, this.extent).length > 0 ||
+            _.intersection(p2, this.extent).length > 0 ||
+            index > projdata.length
           ) {
             continue;
           }
@@ -182,6 +213,27 @@ export default {
           }
         }
       });
+
+      // 多边形每条边距离的归一化
+      let weightScale;
+      (function() {
+        let weightlist = [];
+        for (let [edge, docindex] of instance.alldata.edge2docindex) {
+          let [p1, p2] = edge.split("-");
+          let weight = 0;
+          if (docindex.length == 2) {
+            let c1 = instance.alldata.index2coords.get(parseInt(p1));
+            let c2 = instance.alldata.index2coords.get(parseInt(p2));
+            weight = Math.sqrt((c1[0] - c2[0]) ** 2 + (c1[1] - c2[1]) ** 2); // 2D 欧式距离作为边权重
+            weightlist.push(weight);
+          }
+        }
+        let max = d3.max(weightlist);
+        weightScale = d3
+          .scaleLinear()
+          .domain([0, max])
+          .range([0, 1]);
+      })();
       // 计算多边形每条边上的权值，根据文档相似度赋予，从而构造图数据
       for (let [edge, docindex] of this.alldata.edge2docindex) {
         let [p1, p2] = edge.split("-");
@@ -189,9 +241,14 @@ export default {
         if (docindex.length == 2) {
           let c1 = this.alldata.index2coords.get(parseInt(p1));
           let c2 = this.alldata.index2coords.get(parseInt(p2));
-          weight = similarityMatrix[docindex[0]][docindex[1]]; // 相似度作为边权重
-          // weight = Math.sqrt((c/1[0]-c2[0])**2 + (c1[1]-c2[1])**2) // 2D 欧式距离作为边权重
-          // weight = Math.sqrt((c1[0]-c2[0])**2 + (c1[1]-c2[1])**2) * similarityMatrix[docindex[0]][docindex[1]];
+          // weight = similarityMatrix[docindex[0]][docindex[1]]; // 相似度作为边权重
+          // weight = Math.sqrt((c1[0]-c2[0])**2 + (c1[1]-c2[1])**2) // 2D 欧式距离作为边权重
+          weight =
+            weightScale(
+              Math.sqrt((c1[0] - c2[0]) ** 2 + (c1[1] - c2[1]) ** 2)
+            ) *
+              0.3 +
+            similarityMatrix[docindex[0]][docindex[1]] * 0.7;
         } else if (docindex.length == 1) {
           weight = 1 / 0;
         }
@@ -221,8 +278,8 @@ export default {
         let triangles2 = d3
           .voronoi()
           .extent([
-            [instance.mapConfig.extent[0], instance.mapConfig.extent[1]],
-            [instance.mapConfig.extent[2], instance.mapConfig.extent[3]]
+            [instance.extent[0], instance.extent[1]],
+            [instance.extent[2], instance.extent[3]]
           ])
           .triangles(docCoords2);
         triangles2.forEach((d, i) => {
@@ -230,9 +287,9 @@ export default {
           let i1 = docCoords2index2.get(JSON.stringify(p1));
           let i2 = docCoords2index2.get(JSON.stringify(p2));
           let i3 = docCoords2index2.get(JSON.stringify(p3));
-          doclink2.add([i1, i2].sort((a,b) => a-b) + "");
-          doclink2.add([i2, i3].sort((a,b) => a-b) + "");
-          doclink2.add([i3, i1].sort((a,b) => a-b) + "");
+          doclink2.add([i1, i2].sort((a, b) => a - b) + "");
+          doclink2.add([i2, i3].sort((a, b) => a - b) + "");
+          doclink2.add([i3, i1].sort((a, b) => a - b) + "");
         });
         doclink2 = Array.from(doclink2);
         let radio = _.intersection(doclink, doclink2).length / doclink.length;
@@ -241,13 +298,13 @@ export default {
     },
     initMap() {
       this.map = new ol.Map({
-        target: "iterative-voronoi-road-map",
+        target: "advanced-hexagon-map",
         view: new ol.View({
           projection: new olproj.Projection({
-            extent: this.mapConfig.extent
+            extent: this.extent
           }),
-          // extent: this.mapConfig.extent,
-          center: olextent.getCenter(this.mapConfig.extent),
+          // extent: this.extent,
+          center: olextent.getCenter(this.extent),
           zoom: 2
         })
       });
@@ -261,9 +318,8 @@ export default {
       let xExt = d3.extent(projdata, d => d.x);
       let yExt = d3.extent(projdata, d => d.y);
 
-      this.alldata.polygons.forEach((pg, index) => {
-        // console.log(pg)
-        let center = d3.polygonCentroid(pg);
+      for (let i = 0, len = projdata.length; i < len; i++) {
+        let center = d3.polygonCentroid(this.alldata.polygons[i]);
         let feature = new ol.Feature({
           geometry: new olgeom.Point(center)
           // geometry: new olgeom.Point([parseFloat(pg.x), parseFloat(pg.y)])
@@ -277,7 +333,7 @@ export default {
           })
         );
         vectorSource.addFeature(feature);
-      });
+      }
       this.map.addLayer(this.layers.docpointLayer);
     },
     addVoronoiLayer() {
@@ -291,16 +347,29 @@ export default {
         let feature = new ol.Feature({
           geometry: new olgeom.Polygon([pg])
         });
-        feature.setStyle(
-          new olstyle.Style({
-            fill: new olstyle.Fill({
-              color: "rgb(255, 255, 255, 0)"
-            }),
-            stroke: new olstyle.Stroke({
-              color: "rgb(0, 0, 0, 0.05)"
+        if (index >= projdata.length) {
+          feature.setStyle(
+            new olstyle.Style({
+              fill: new olstyle.Fill({
+                color: "rgb(0, 191, 255, 0.3)"
+              }),
+              stroke: new olstyle.Stroke({
+                color: "rgb(0, 0, 0, 0.05)"
+              })
             })
-          })
-        );
+          );
+        } else {
+          feature.setStyle(
+            new olstyle.Style({
+              fill: new olstyle.Fill({
+                color: "rgb(255, 255, 255, 0)"
+              }),
+              stroke: new olstyle.Stroke({
+                color: "rgb(0, 0, 0, 0.05)"
+              })
+            })
+          );
+        }
         feature.setId("voronoi-" + index);
         vectorSource.addFeature(feature);
       });
@@ -367,11 +436,9 @@ export default {
         let start = pg1[0],
           end = pg2[0];
         for (let i = 0, len1 = pg1.length; i < len1; i++) {
-          if (_.intersection(pg1[i], this.mapConfig.extent).length > 0)
-            continue;
+          if (_.intersection(pg1[i], this.extent).length > 0) continue;
           for (let j = 0, len2 = pg2.length; j < len2; j++) {
-            if (_.intersection(pg2[j], this.mapConfig.extent).length > 0)
-              continue;
+            if (_.intersection(pg2[j], this.extent).length > 0) continue;
             let p1 = pg1[i];
             let p2 = pg2[j];
             let tmp = Math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2);
@@ -438,7 +505,7 @@ export default {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style lang='scss' scoped>
-.iterative-voronoi-road {
+.advanced-hexagon {
   width: 100%;
   height: 100%;
 
@@ -451,7 +518,7 @@ export default {
     }
   }
 
-  #iterative-voronoi-road-map {
+  #advanced-hexagon-map {
     width: 100%;
     position: absolute;
     top: 60px;

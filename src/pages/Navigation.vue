@@ -6,8 +6,9 @@
       <li><a href="/triangulation">Triangulation</a></li>
       <li><a href="/voronoiDocs">Voronoi + Documents</a></li>
       <li><a href="/voronoiRoad">Voronoi + Road</a></li>
-      <li><a href="/IterativeVoronoi">IterativeVoronoi + Road</a></li>
-      <li><a href="/voronoiComparison">Voronoi VS IterativeVoronoi</a></li>
+      <li><a href="/hexagon">Hexagon + Road</a></li>
+      <li><a href="/voronoiComparison">Voronoi VS Hexagon</a></li>
+      <li><a href="/advancedHexagon">Advanced Hexagon</a></li>
     </ul>
   </div>
 </template>

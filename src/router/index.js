@@ -3,11 +3,12 @@ import VueRouter from 'vue-router'
 import Navigation from '../pages/Navigation'
 import Contour from '../components/Contour.vue'
 import Voronoi from '../components/Voronoi.vue'
-import IterativeVoronoi from '../components/IterativeVoronoi.vue'
+import Hexagon from '../components/Hexagon.vue'
 import Triangulation from '../components/Triangulation.vue'
 import VoronoiDocs from '../components/VoronoiDocs.vue'
 import VoronoiRoad from '../components/VoronoiRoad.vue'
 import VoronoiComparison from '../components/VoronoiComparison.vue'
+import AdvancedHexagon from '../components/AdvancedHexagon.vue'
 
 Vue.use(VueRouter)
 
@@ -18,11 +19,12 @@ const router = new VueRouter({
     { path: '/navigation', name: 'navigation', component: Navigation },
     { path: '/contour', name: 'contour', component: Contour },
     { path: '/voronoi', name: 'voronoi', component: Voronoi },
-    { path: '/IterativeVoronoi', name: 'IterativeVoronoi', component: IterativeVoronoi },
+    { path: '/hexagon', name: 'hexagon', component: Hexagon },
     { path: '/triangulation', name: 'triangulation', component: Triangulation },
     { path: '/voronoiDocs', name: 'voronoiDocs', component: VoronoiDocs },
     { path: '/voronoiRoad', name: 'voronoiRoad', component: VoronoiRoad },
     { path: '/voronoiComparison', name: 'voronoiComparison', component: VoronoiComparison },
+    { path: '/advancedHexagon', name: 'advancedHexagon', component: AdvancedHexagon },
   ]
 });
 

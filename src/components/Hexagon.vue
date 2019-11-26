@@ -1,9 +1,9 @@
 <template>
-  <div class="voronoi-road">
+  <div class="hexagon">
     <div class="title">
-      <h3>Voronoi + Road</h3>
+      <h3>Hexagon + Road</h3>
     </div>
-    <div id="voronoi-road-map"></div>
+    <div id="hexagon-map"></div>
   </div>
 </template>
 
@@ -23,7 +23,7 @@ import similarityMatrix from "../assets/data/thucnews/similarity_matrix_thucnews
 import longdisHighsimilarity from "../assets/js/dist2similarity.js";
 import Graph from "../assets/js/dijkstra.js";
 export default {
-  name: "VoronoiRoad",
+  name: "Hexagon",
   data() {
     return {
       map: null,
@@ -42,10 +42,15 @@ export default {
         graphdata: new Map(), // 根据多边形构造的图数据
         graph: new Graph() // 根据多边形的边构造图
       },
-      selected: [],
       color: null,
       roadwithScale: null
     };
+  },
+  created: function() {
+    this.$root.eventHub.$on("compareVoronoi", this.compareVoronoi);
+  },
+  beforeDestroy: function() {
+    this.$root.eventHub.$off("compareVoronoi");
   },
   mounted() {
     this.$nextTick(() => {
@@ -89,12 +94,56 @@ export default {
           [this.extent[2], this.extent[3]]
         ])
         .polygons(docCoords);
+
+      let instance = this;
+      let doclink = new Set();
+      (function() {
+        let docCoords2index = new Map();
+        cells.forEach((d, i) => {
+          docCoords2index.set(JSON.stringify(d.data), i);
+        });
+        let triangles = d3
+          .voronoi()
+          .extent([
+            [instance.extent[0], instance.extent[1]],
+            [instance.extent[2], instance.extent[3]]
+          ])
+          .triangles(docCoords);
+        triangles.forEach((d, i) => {
+          let [p1, p2, p3] = d;
+          let i1 = docCoords2index.get(JSON.stringify(p1));
+          let i2 = docCoords2index.get(JSON.stringify(p2));
+          let i3 = docCoords2index.get(JSON.stringify(p3));
+          doclink.add([i1, i2].sort((a, b) => a - b) + "");
+          doclink.add([i2, i3].sort((a, b) => a - b) + "");
+          doclink.add([i3, i1].sort((a, b) => a - b) + "");
+        });
+        doclink = Array.from(doclink);
+      })();
       // 获得Voronoi的多边形
       this.alldata.polygons = cells.map(c => {
         let pg = Object.assign([], c);
         pg.push(c[0]);
         return pg;
       });
+      // Voronoi每次选取多边形中心，重新绘制，多次迭代后变成六边形地图
+      for (let i = 0; i < 600; i++) {
+        docCoords = this.alldata.polygons.map(d => d3.polygonCentroid(d));
+        cells = d3
+          .voronoi()
+          .extent([
+            [this.extent[0], this.extent[1]],
+            [this.extent[2], this.extent[3]]
+          ])
+          .polygons(docCoords);
+        // 获得Voronoi的多边形
+        this.alldata.polygons = cells.map(c => {
+          let pg = Object.assign([], c);
+          pg.push(c[0]);
+          return pg;
+        });
+      }
+
       let p_index = 0;
       // 构建多边形边上点的坐标与索引的互相映射
       this.alldata.polygons.forEach((pg, index) => {
@@ -136,7 +185,27 @@ export default {
           }
         }
       });
-      // let distScale = d3.scaleLinear().domain([0, this.extent[2]-this.extent[0]]).range([0, 1]);
+
+      // 多边形每条边距离的归一化
+      let weightScale;
+      (function() {
+        let weightlist = [];
+        for (let [edge, docindex] of instance.alldata.edge2docindex) {
+          let [p1, p2] = edge.split("-");
+          let weight = 0;
+          if (docindex.length == 2) {
+            let c1 = instance.alldata.index2coords.get(parseInt(p1));
+            let c2 = instance.alldata.index2coords.get(parseInt(p2));
+            weight = Math.sqrt((c1[0] - c2[0]) ** 2 + (c1[1] - c2[1]) ** 2); // 2D 欧式距离作为边权重
+            weightlist.push(weight);
+          }
+        }
+        let max = d3.max(weightlist);
+        weightScale = d3
+          .scaleLinear()
+          .domain([0, max])
+          .range([0, 1]);
+      })();
       // 计算多边形每条边上的权值，根据文档相似度赋予，从而构造图数据
       for (let [edge, docindex] of this.alldata.edge2docindex) {
         let [p1, p2] = edge.split("-");
@@ -147,8 +216,11 @@ export default {
           // weight = similarityMatrix[docindex[0]][docindex[1]]; // 相似度作为边权重
           // weight = Math.sqrt((c1[0]-c2[0])**2 + (c1[1]-c2[1])**2) // 2D 欧式距离作为边权重
           weight =
-            Math.sqrt((c1[0] - c2[0]) ** 2 + (c1[1] - c2[1]) ** 2) *
-            similarityMatrix[docindex[0]][docindex[1]];
+            weightScale(
+              Math.sqrt((c1[0] - c2[0]) ** 2 + (c1[1] - c2[1]) ** 2)
+            ) *
+              0.3 +
+            similarityMatrix[docindex[0]][docindex[1]] * 0.7;
         } else if (docindex.length == 1) {
           weight = 1 / 0;
         }
@@ -167,10 +239,38 @@ export default {
       for (let [key, value] of this.alldata.graphdata) {
         this.alldata.graph.addVertex(key, value);
       }
+
+      let doclink2 = new Set();
+      (function() {
+        let docCoords2 = instance.alldata.polygons.map(d => d.data);
+        let docCoords2index2 = new Map();
+        instance.alldata.polygons.forEach((d, i) => {
+          docCoords2index2.set(JSON.stringify(d.data), i);
+        });
+        let triangles2 = d3
+          .voronoi()
+          .extent([
+            [instance.extent[0], instance.extent[1]],
+            [instance.extent[2], instance.extent[3]]
+          ])
+          .triangles(docCoords2);
+        triangles2.forEach((d, i) => {
+          let [p1, p2, p3] = d;
+          let i1 = docCoords2index2.get(JSON.stringify(p1));
+          let i2 = docCoords2index2.get(JSON.stringify(p2));
+          let i3 = docCoords2index2.get(JSON.stringify(p3));
+          doclink2.add([i1, i2].sort((a, b) => a - b) + "");
+          doclink2.add([i2, i3].sort((a, b) => a - b) + "");
+          doclink2.add([i3, i1].sort((a, b) => a - b) + "");
+        });
+        doclink2 = Array.from(doclink2);
+        let radio = _.intersection(doclink, doclink2).length / doclink.length;
+        console.log("结构保持率：" + radio.toFixed(2));
+      })();
     },
     initMap() {
       this.map = new ol.Map({
-        target: "voronoi-road-map",
+        target: "hexagon-map",
         view: new ol.View({
           projection: new olproj.Projection({
             extent: this.extent
@@ -179,11 +279,6 @@ export default {
           center: olextent.getCenter(this.extent),
           zoom: 2
         })
-        // layers: [
-        //   new ollayer.Tile({
-        //     source: new olsource.OSM()
-        //   })
-        // ]
       });
     },
     addDocPoint() {
@@ -195,9 +290,12 @@ export default {
       let xExt = d3.extent(projdata, d => d.x);
       let yExt = d3.extent(projdata, d => d.y);
 
-      projdata.forEach(doc => {
+      this.alldata.polygons.forEach((pg, index) => {
+        // console.log(pg)
+        let center = d3.polygonCentroid(pg);
         let feature = new ol.Feature({
-          geometry: new olgeom.Point([parseFloat(doc.x), parseFloat(doc.y)])
+          geometry: new olgeom.Point(center)
+          // geometry: new olgeom.Point([parseFloat(pg.x), parseFloat(pg.y)])
         });
         feature.setStyle(
           new olstyle.Style({
@@ -228,7 +326,7 @@ export default {
               color: "rgb(255, 255, 255, 0)"
             }),
             stroke: new olstyle.Stroke({
-              color: "grey"
+              color: "rgb(0, 0, 0, 0.05)"
             })
           })
         );
@@ -249,19 +347,20 @@ export default {
         let [p1, p2] = edge.split("-");
         p1 = parseInt(p1);
         p2 = parseInt(p2);
+        // console.log(this.alldata.polygons[docindex[0]])
         if (docindex.length == 2) {
           pg = [
             this.alldata.index2coords.get(p1),
-            [projdata[docindex[0]].x, projdata[docindex[0]].y],
+            this.alldata.polygons[docindex[0]].data,
             this.alldata.index2coords.get(p2),
-            [projdata[docindex[1]].x, projdata[docindex[1]].y],
+            this.alldata.polygons[docindex[1]].data,
             this.alldata.index2coords.get(p1)
           ];
           weight = similarityMatrix[docindex[0]][docindex[1]];
         } else if (docindex.length == 1) {
           pg = [
             this.alldata.index2coords.get(p1),
-            [projdata[docindex[0]].x, projdata[docindex[0]].y],
+            this.alldata.polygons[docindex[0]].data,
             this.alldata.index2coords.get(p2),
             this.alldata.index2coords.get(p1)
           ];
@@ -339,41 +438,26 @@ export default {
       this.map.addLayer(this.layers.roadLayer);
     },
     addClickEventOnRoad() {
-      // let selectSingleClick = new olinteraction.Select();
-      // let instance = this;
-      // selectSingleClick.on('select', function(e) {
-      //   e.selected.forEach(feature => {
-      //     instance.$root.eventHub.$emit('compareVoronoi', feature.getId());
-      //     // feature.setStyle(new olstyle.Style({
-      //     //   stroke: new olstyle.Stroke({
-      //     //     color: 'steelblue',
-      //     //     width: 2,
-      //     //   })
-      //     // }));
-      //   })
-      // });
-      // this.map.addInteraction(selectSingleClick);
       let selectSingleClick = new olinteraction.Select();
       let instance = this;
       selectSingleClick.on("select", function(e) {
-        if (e.selected && e.selected.length > 0) {
-          instance.selected = instance.selected.concat(e.selected);
-          e.selected.forEach(feature => {
-            instance.$root.eventHub.$emit("compareVoronoi", feature.getId());
-          });
-        }
-        instance.selected.forEach(feature => {
-          feature.setStyle(
-            new olstyle.Style({
-              stroke: new olstyle.Stroke({
-                color: "steelblue",
-                width: 2
-              })
-            })
-          );
+        e.selected.forEach(feature => {
+          // instance.$root.eventHub.$emit("compareVoronoi", feature.getId());
         });
       });
       this.map.addInteraction(selectSingleClick);
+    },
+    compareVoronoi(featureId) {
+      let source = this.layers.voronoiLayer.getSource();
+      let feature = source.getFeatureById(featureId);
+      feature.setStyle(
+        new olstyle.Style({
+          stroke: new olstyle.Stroke({
+            color: "steelblue",
+            width: 2
+          })
+        })
+      );
     }
   }
 };
@@ -381,7 +465,7 @@ export default {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style lang='scss' scoped>
-.voronoi-road {
+.hexagon {
   width: 100%;
   height: 100%;
 
@@ -394,7 +478,7 @@ export default {
     }
   }
 
-  #voronoi-road-map {
+  #hexagon-map {
     width: 100%;
     position: absolute;
     top: 60px;

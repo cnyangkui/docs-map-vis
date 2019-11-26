@@ -4,19 +4,20 @@
       <VoronoiRoad></VoronoiRoad>
     </div>
     <div class="right">
-      <IterativeVoronoi></IterativeVoronoi>
+      <AdvancedHexagon></AdvancedHexagon>
     </div>
   </div>
 </template>
 
 <script>
 import VoronoiRoad from './VoronoiRoad.vue'
-import IterativeVoronoi from './IterativeVoronoi.vue'
+// import Hexagon from './Hexagon.vue'
+import AdvancedHexagon from './AdvancedHexagon.vue'
 export default {
   name: 'VoronoiComparison',
   components: {
     VoronoiRoad,
-    IterativeVoronoi
+    AdvancedHexagon
   },
   data() {
     return {
