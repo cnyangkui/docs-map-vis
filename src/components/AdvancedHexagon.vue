@@ -23,7 +23,7 @@ import similarityMatrix from "../assets/data/thucnews/similarity_matrix_thucnews
 import longdisHighsimilarity from "../assets/js/dist2similarity.js";
 import Graph from "../assets/js/dijkstra.js";
 export default {
-  name: "AdvancedIterativeVoronoi",
+  name: "AdvancedHexagon",
   data() {
     return {
       map: null,
@@ -73,7 +73,12 @@ export default {
       let x = xExt[1] - xExt[0] > yExt[1] - yExt[0] ? xExt : yExt;
       let y = xExt[1] - xExt[0] < yExt[1] - yExt[0] ? xExt : yExt;
       this.dataExtent = [x[0], y[0], x[1], y[1]];
-      this.extent = [x[0] * 1.2, y[0] * 1.2, x[1] * 1.2, y[1] * 1.2];
+      this.extent = [
+        x[0] - 0.1 * (x[1] - x[0]),
+        y[0] - 0.1 * (y[1] - y[0]),
+        x[1] + 0.1 * (x[1] - x[0]),
+        y[1] + 0.1 * (y[1] - y[0])
+      ];
       this.color = d3
         .scaleSequential()
         .domain([0, 0.5])
@@ -117,10 +122,10 @@ export default {
         });
         doclink = Array.from(doclink);
       })();
-      let randomNumber = 800;
+      let randomNumber = 1000;
       this.alldata.points = projdata.map(d => [d.x, d.y]);
       for (let i = 0; i < randomNumber; i++) {
-        let tmp = Math.floor(i / (randomNumber / 4));
+        let tmp = i % 4;
         if (tmp == 0) {
           let x = _.random(this.extent[0], this.dataExtent[2], true);
           let y = _.random(this.extent[1], this.dataExtent[1], true);
@@ -426,6 +431,8 @@ export default {
         source: vectorSource,
         zIndex: 4
       });
+      // let coordsdata = this.alldata.polygons.filter((d, i) => i < projdata.length);
+      // coordsdata = coordsdata.map(d => { return {x: d.data[0], y: d.data[1]}});
       longdisHighsimilarity().forEach(d => {
         let pair = d.pair.split("-");
         // let p1 = [projdata[parseInt(pair[0])].x, projdata[parseInt(pair[0])].y];
@@ -468,7 +475,7 @@ export default {
         feature.setStyle(
           new olstyle.Style({
             stroke: new olstyle.Stroke({
-              color: "rgb(255, 165, 0, 0.5)",
+              color: "rgb(255, 165, 0, 0.3)",
               width: this.roadwithScale(similarityMatrix[pair[0]][pair[1]])
             })
           })

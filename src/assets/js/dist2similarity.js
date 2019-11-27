@@ -2,14 +2,14 @@ const d3 = require('d3')
 const projdata = require('../data/thucnews/projection_dense_tfidf_thucnews.json')
 const similarityMatrix = require('../data/thucnews/similarity_matrix_thucnews_5round.json')
 
-function getLongdisHighsimilarity(dist_quantile=0.2, similarity_threshold=0.2) {
+function getLongdisHighsimilarity(coordsdata=projdata, simmatrix=similarityMatrix, dist_quantile=0.3, similarity_threshold=0.2) {
   let dist2similarity = []
-  for(let i=0,len1=similarityMatrix.length; i<len1; i++) {
-    for(let j=i+1,len2=similarityMatrix[i].length; j<len2; j++) {
+  for(let i=0,len1=simmatrix.length; i<len1; i++) {
+    for(let j=i+1,len2=simmatrix[i].length; j<len2; j++) {
       dist2similarity.push({
         pair: i+'-'+j,
-        similarity: similarityMatrix[i][j],
-        dist: Math.sqrt((projdata[i].x-projdata[j].x)**2 + (projdata[i].y-projdata[j].y)**2)
+        similarity: simmatrix[i][j],
+        dist: Math.sqrt((coordsdata[i].x-coordsdata[j].x)**2 + (coordsdata[i].y-coordsdata[j].y)**2)
       })
     }
   }
