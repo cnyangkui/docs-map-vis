@@ -277,7 +277,7 @@ export default {
           }),
           // extent: this.extent,
           center: olextent.getCenter(this.extent),
-          zoom: 2
+          zoom: 1.8
         })
       });
     },

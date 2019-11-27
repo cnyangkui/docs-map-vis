@@ -45,8 +45,8 @@ export default {
         graph: new Graph() // 根据多边形的边构造图
       },
       config: {
-        mapIterationNum: 600,
-        outerPointNum: 1000,
+        mapIterationNum: 50,
+        outerPointNum: 500,
         innerXNum: 20,
         innerYNum: 20
       },
@@ -196,9 +196,9 @@ export default {
           [instance.extent[2], instance.extent[3]]
         ])
         .polygons(this.alldata.points);
-      // 获得Voronoi的多边形
+      // 获得Voronoi的多边形  
       this.alldata.polygons = cells.map(c => {
-        let pg = Object.assign([], c);
+        let pg = c;
         pg.push(c[0]);
         return pg;
       });
@@ -215,7 +215,7 @@ export default {
           .polygons(docCoords);
         // 获得Voronoi的多边形
         this.alldata.polygons = cells.map(c => {
-          let pg = Object.assign([], c);
+          let pg = c;
           pg.push(c[0]);
           return pg;
         });
@@ -225,25 +225,24 @@ export default {
       // 构建多边形边上点的坐标与索引的互相映射
       this.alldata.polygons.forEach((pg, index) => {
         pg.forEach((point, i) => {
-          let coords = Object.assign([], point);
-          this.alldata.coords2index.set(JSON.stringify(coords), p_index);
-          this.alldata.index2coords.set(p_index, coords);
+          this.alldata.coords2index.set(JSON.stringify(point), p_index);
+          this.alldata.index2coords.set(p_index, point);
           p_index++;
         });
       });
       // 对于多边形的每条边，获得与之共边的多边形的索引
       this.alldata.polygons.forEach((pg, index) => {
         for (let i = 0, len = pg.length - 1; i < len; i++) {
-          let p1 = Object.assign([], pg[i]); // 多边形上的节点
-          let p2 = Object.assign([], pg[i + 1]); // 多边形上的节点
           if (
-            _.intersection(p1, this.extent).length > 0 ||
-            _.intersection(p2, this.extent).length > 0 ||
+            // _.intersection(p1, this.extent).length > 0 ||
+            // _.intersection(p2, this.extent).length > 0 ||
             (index > projdata.length &&
               index < projdata.length + this.config.outerPointNum)
           ) {
             continue;
           }
+          let p1 = pg[i]; //Object.assign([], pg[i]); // 多边形上的节点
+          let p2 = pg[i+1]; //Object.assign([], pg[i + 1]); // 多边形上的节点
           let i1 = this.alldata.coords2index.get(JSON.stringify(p1));
           let i2 = this.alldata.coords2index.get(JSON.stringify(p2));
           let edge1 = i1 + "-" + i2;
@@ -264,7 +263,6 @@ export default {
           }
         }
       });
-
       // 多边形每条边距离的归一化
       let weightScale;
       (function() {
@@ -322,7 +320,6 @@ export default {
       for (let [key, value] of this.alldata.graphdata) {
         this.alldata.graph.addVertex(key, value);
       }
-
       let doclink2 = new Set();
       (function() {
         let docCoords2 = instance.alldata.polygons.map(d => d.data);
@@ -447,7 +444,7 @@ export default {
             this.alldata.polygons[docindex[1]].data,
             this.alldata.index2coords.get(p1)
           ];
-          if(docindex[0] < projdata.length && docindex[1] < projdata.length) {
+          if (docindex[0] < projdata.length && docindex[1] < projdata.length) {
             weight = similarityMatrix[docindex[0]][docindex[1]];
           } else {
             weight = 0;
@@ -555,7 +552,7 @@ export default {
           })
         })
       );
-    }
+    },
   }
 };
 </script>

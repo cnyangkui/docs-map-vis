@@ -159,7 +159,7 @@ export default {
       });
       // Voronoi每次选取多边形中心，重新绘制，多次迭代后变成六边形地图
       let docCoords = [];
-      for (let i = 0; i < 600; i++) {
+      for (let i = 0; i < 500; i++) {
         docCoords = this.alldata.polygons.map(d => d3.polygonCentroid(d));
         cells = d3
           .voronoi()

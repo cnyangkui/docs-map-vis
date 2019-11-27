@@ -60,7 +60,7 @@ export default {
       this.processData();
       this.initMap();
       // this.addColorLump();
-      this.addVoronoiLayer();
+      // this.addVoronoiLayer();
       // this.addRoadLayer();
       this.addDocPoint();
       // this.addClickEventOnRoad();
@@ -122,7 +122,7 @@ export default {
         });
         doclink = Array.from(doclink);
       })();
-      let randomNumber = 1000;
+      let randomNumber = 500;
       this.alldata.points = projdata.map(d => [d.x, d.y]);
       for (let i = 0; i < randomNumber; i++) {
         let tmp = i % 4;
@@ -191,13 +191,14 @@ export default {
       //   .polygons(this.alldata.points);
       // // 获得Voronoi的多边形
       // this.alldata.polygons = cells.map(c => {
-      //   let pg = Object.assign([], c);
+      //   // let pg = Object.assign([], c);
+      //   let pg = c;
       //   pg.push(c[0]);
       //   return pg;
       // });
       // // Voronoi每次选取多边形中心，重新绘制，多次迭代后变成六边形地图
       // let docCoords = [];
-      // for (let i = 0; i < 600; i++) {
+      // for (let i = 0; i < 1; i++) {
       //   docCoords = this.alldata.polygons.map(d => d3.polygonCentroid(d));
       //   cells = d3
       //     .voronoi()
@@ -208,7 +209,8 @@ export default {
       //     .polygons(docCoords);
       //   // 获得Voronoi的多边形
       //   this.alldata.polygons = cells.map(c => {
-      //     let pg = Object.assign([], c);
+      //     // let pg = Object.assign([], c);
+      //     let pg = c;
       //     pg.push(c[0]);
       //     return pg;
       //   });
