@@ -1,8 +1,8 @@
 <template>
   <div class="advanced-hexagon-lake">
-    <div class="title">
+    <!-- <div class="title">
       <h3>Advanced Hexagon</h3>
-    </div>
+    </div> -->
     <div id="advanced-hexagon-lake-map"></div>
   </div>
 </template>
@@ -620,19 +620,19 @@ export default {
   width: 100%;
   height: 100%;
 
-  .title {
-    height: 60px;
+  // .title {
+  //   height: 60px;
 
-    h3 {
-      display: inline;
-      line-height: 60px;
-    }
-  }
+  //   h3 {
+  //     display: inline;
+  //     line-height: 60px;
+  //   }
+  // }
 
   #advanced-hexagon-lake-map {
     width: 100%;
     position: absolute;
-    top: 60px;
+    top: 0px;
     bottom: 0px;
 
     /deep/ .layer-switcher {
