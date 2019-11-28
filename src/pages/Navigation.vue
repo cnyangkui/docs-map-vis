@@ -10,6 +10,7 @@
       <li><a href="/voronoiComparison">Voronoi VS Hexagon</a></li>
       <li><a href="/advancedHexagon">Hexagon + Ocean</a></li>
       <li><a href="/advancedHexagonLake">Hexagon + Ocean + Lake</a></li>
+      <li><a href="/map">Map</a></li>
     </ul>
   </div>
 </template>

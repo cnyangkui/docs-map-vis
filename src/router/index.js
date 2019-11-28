@@ -10,7 +10,7 @@ import VoronoiRoad from '../components/VoronoiRoad.vue'
 import VoronoiComparison from '../components/VoronoiComparison.vue'
 import AdvancedHexagon from '../components/AdvancedHexagon.vue'
 import AdvancedHexagonLake from '../components/AdvancedHexagonLake.vue'
-import AdvancedHexagonLake2 from '../components/AdvancedHexagonLake2.vue'
+import Map from '../components/Map.vue'
 
 Vue.use(VueRouter)
 
@@ -28,7 +28,7 @@ const router = new VueRouter({
     { path: '/voronoiComparison', name: 'voronoiComparison', component: VoronoiComparison },
     { path: '/advancedHexagon', name: 'advancedHexagon', component: AdvancedHexagon },
     { path: '/advancedHexagonLake', name: 'advancedHexagonLake', component: AdvancedHexagonLake },
-    { path: '/advancedHexagonLake2', name: 'advancedHexagonLake2', component: AdvancedHexagonLake2 }
+    { path: '/map', name: 'map', component: Map }
   ]
 });
 
