@@ -4,7 +4,7 @@
       <VoronoiRoad></VoronoiRoad>
     </div>
     <div class="right">
-      <AdvancedHexagonLake></AdvancedHexagonLake>
+      <EnhancedVoronoiOceanLake></EnhancedVoronoiOceanLake>
     </div>
   </div>
 </template>
@@ -12,12 +12,12 @@
 <script>
 import VoronoiRoad from './VoronoiRoad.vue'
 // import Hexagon from './Hexagon.vue'
-import AdvancedHexagonLake from './AdvancedHexagonLake.vue'
+import EnhancedVoronoiOceanLake from './EnhancedVoronoiOceanLake.vue'
 export default {
   name: 'VoronoiComparison',
   components: {
     VoronoiRoad,
-    AdvancedHexagonLake
+    EnhancedVoronoiOceanLake
   },
   data() {
     return {

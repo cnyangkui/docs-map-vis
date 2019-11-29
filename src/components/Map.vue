@@ -1,9 +1,9 @@
 <template>
-  <div class="advanced-hexagon-lake">
+  <div class="map-container">
     <!-- <div class="title">
       <h3>Advanced Hexagon</h3>
     </div> -->
-    <div id="advanced-hexagon-lake-map"></div>
+    <div id="map"></div>
   </div>
 </template>
 
@@ -22,6 +22,7 @@ import * as olcontrol from "ol/control";
 import LayerSwitcher from "ol-layerswitcher/src/ol-layerswitcher.js";
 import projdata from "../../public/data/output/thucnews/projection_dense_tfidf_thucnews.json";
 import similarityMatrix from "../../public/data/output/thucnews/similarity_matrix_thucnews_5round.json";
+import cluserdata from "../../public/data/output/thucnews/cluster.json"
 import longdisHighsimilarity from "../assets/js/dist2similarity.js";
 import Graph from "../assets/js/dijkstra.js";
 export default {
@@ -29,12 +30,6 @@ export default {
   data() {
     return {
       map: null,
-      // layers: {
-      //   docpointLayer: null,
-      //   voronoiLayer: null,
-      //   colorLumpLayer: null,
-      //   roadLayer: null
-      // },
       dataExtent: [],
       extent: [], //[left, bottom, right, top],
       alldata: {
@@ -44,7 +39,8 @@ export default {
         index2coords: new Map(), // 多边形边上点的索引到坐标的映射
         edge2docindex: new Map(), // 与每条边共边的多边形索引
         graphdata: new Map(), // 根据多边形构造的图数据
-        graph: new Graph() // 根据多边形的边构造图
+        graph: new Graph(), // 根据多边形的边构造图
+        clusterdata: []
       },
       config: {
         mapIterationNum: 50,
@@ -64,14 +60,14 @@ export default {
   },
   mounted() {
     this.$nextTick(() => {
-      this.loadSettings();
       this.processData();
       this.initMap();
       this.addClickEventOnRoad();
     });
   },
   methods: {
-    loadSettings() {
+    processData() {
+      let instance = this;
       let xExt = d3.extent(projdata, d => d.x);
       let yExt = d3.extent(projdata, d => d.y);
       let x = xExt[1] - xExt[0] > yExt[1] - yExt[0] ? xExt : yExt;
@@ -91,9 +87,6 @@ export default {
         .scaleLinear()
         .domain([0.2, 0.5])
         .range([1, 5]);
-    },
-    processData() {
-      let instance = this;
       let doclink = new Set();
       (function() {
         let docCoords = projdata.map(d => [d.x, d.y]);
@@ -345,10 +338,19 @@ export default {
         let radio = _.intersection(doclink, doclink2).length / doclink.length;
         console.log("结构保持率：" + radio.toFixed(2));
       })();
+      // 处理聚类数据
+      (function(){
+        instance.alldata.clusterdata = new Array(projdata.length);
+        Object.keys(cluserdata).forEach(key => {
+          cluserdata[key].forEach(value => {
+            instance.alldata.clusterdata[value] = +key;
+          })
+        })
+      })()
     },
     initMap() {
       this.map = new ol.Map({
-        target: "advanced-hexagon-lake-map",
+        target: "map",
         layers: [
           new ollayer.Group({
             title: "Base maps",
@@ -367,6 +369,13 @@ export default {
                     source: this.addVoronoi()
                   })
                 ]
+              }),
+              new ollayer.Vector({
+                title: "Cluster",
+                type: "base",
+                visible: false,
+                source: this.addCluster(),
+                opacity: 0.3
               })
             ]
           }),
@@ -462,6 +471,45 @@ export default {
           );
         }
         feature.setId("voronoi-" + index);
+        vectorSource.addFeature(feature);
+      });
+      return vectorSource;
+    },
+    addCluster() {
+      let clsuterNum = Object.keys(cluserdata).length;
+      let color = d3
+        .scaleSequential()
+        .domain([0, clsuterNum])
+        .interpolator(d3.interpolateYlGn);
+      let vectorSource = new olsource.Vector();
+      this.alldata.polygons.forEach((pg, index) => {
+        let feature = new ol.Feature({
+          geometry: new olgeom.Polygon([pg])
+        });
+        if (index >= projdata.length) {
+          feature.setStyle(
+            new olstyle.Style({
+              fill: new olstyle.Fill({
+                color: "rgb(0, 191, 255)"
+              }),
+              stroke: new olstyle.Stroke({
+                color: "grey"
+              })
+            })
+          );
+        } else {
+          feature.setStyle(
+            new olstyle.Style({
+              fill: new olstyle.Fill({
+                color: color(this.alldata.clusterdata[index])
+              }),
+              stroke: new olstyle.Stroke({
+                color: "grey"
+              })
+            })
+          );
+        }
+        feature.setId("clsuter-voronoi-" + index);
         vectorSource.addFeature(feature);
       });
       return vectorSource;
@@ -616,7 +664,7 @@ export default {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style lang='scss' scoped>
-.advanced-hexagon-lake {
+.map-container {
   width: 100%;
   height: 100%;
 
@@ -629,7 +677,7 @@ export default {
   //   }
   // }
 
-  #advanced-hexagon-lake-map {
+  #map {
     width: 100%;
     position: absolute;
     top: 0px;

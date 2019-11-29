@@ -1,9 +1,9 @@
 <template>
-  <div class="advanced-hexagon">
-    <div class="title">
+  <div class="advanced-hexagon-lake">
+    <!-- <div class="title">
       <h3>Advanced Hexagon</h3>
-    </div>
-    <div id="advanced-hexagon-map"></div>
+    </div> -->
+    <div id="advanced-hexagon-lake-map"></div>
   </div>
 </template>
 
@@ -18,21 +18,18 @@ import * as olproj from "ol/proj";
 import * as olgeom from "ol/geom";
 import * as olstyle from "ol/style";
 import * as olinteraction from "ol/interaction";
+import * as olcontrol from "ol/control";
+import LayerSwitcher from "ol-layerswitcher/src/ol-layerswitcher.js";
 import projdata from "../../public/data/output/thucnews/projection_dense_tfidf_thucnews.json";
 import similarityMatrix from "../../public/data/output/thucnews/similarity_matrix_thucnews_5round.json";
+import cluserdata from "../../public/data/output/thucnews/cluster.json"
 import longdisHighsimilarity from "../assets/js/dist2similarity.js";
 import Graph from "../assets/js/dijkstra.js";
 export default {
-  name: "AdvancedHexagon",
+  name: "Map",
   data() {
     return {
       map: null,
-      layers: {
-        docpointLayer: null,
-        voronoiLayer: null,
-        colorLumpLayer: null,
-        roadLayer: null
-      },
       dataExtent: [],
       extent: [], //[left, bottom, right, top],
       alldata: {
@@ -42,7 +39,14 @@ export default {
         index2coords: new Map(), // 多边形边上点的索引到坐标的映射
         edge2docindex: new Map(), // 与每条边共边的多边形索引
         graphdata: new Map(), // 根据多边形构造的图数据
-        graph: new Graph() // 根据多边形的边构造图
+        graph: new Graph(), // 根据多边形的边构造图
+        clusterdata: []
+      },
+      config: {
+        mapIterationNum: 50,
+        outerPointNum: 500,
+        innerXNum: 20,
+        innerYNum: 20
       },
       color: null,
       roadwithScale: null
@@ -56,18 +60,14 @@ export default {
   },
   mounted() {
     this.$nextTick(() => {
-      this.loadSettings();
       this.processData();
       this.initMap();
-      this.addColorLump();
-      this.addVoronoiLayer();
-      this.addRoadLayer();
-      this.addDocPoint();
       this.addClickEventOnRoad();
     });
   },
   methods: {
-    loadSettings() {
+    processData() {
+      let instance = this;
       let xExt = d3.extent(projdata, d => d.x);
       let yExt = d3.extent(projdata, d => d.y);
       let x = xExt[1] - xExt[0] > yExt[1] - yExt[0] ? xExt : yExt;
@@ -87,9 +87,6 @@ export default {
         .scaleLinear()
         .domain([0.2, 0.5])
         .range([1, 5]);
-    },
-    processData() {
-      let instance = this;
       let doclink = new Set();
       (function() {
         let docCoords = projdata.map(d => [d.x, d.y]);
@@ -122,9 +119,8 @@ export default {
         });
         doclink = Array.from(doclink);
       })();
-      let randomNumber = 1000;
       this.alldata.points = projdata.map(d => [d.x, d.y]);
-      for (let i = 0; i < randomNumber; i++) {
+      for (let i = 0; i < this.config.outerPointNum; i++) {
         let tmp = i % 4;
         if (tmp == 0) {
           let x = _.random(this.extent[0], this.dataExtent[2], true);
@@ -144,6 +140,46 @@ export default {
           this.alldata.points.push([x, y]);
         }
       }
+      let xspan =
+        (this.dataExtent[2] - this.dataExtent[0]) / this.config.innerXNum;
+      let yspan =
+        (this.dataExtent[3] - this.dataExtent[1]) / this.config.innerYNum;
+      let xScale = d3
+        .scaleQuantize()
+        .domain([this.dataExtent[0], this.dataExtent[2]])
+        .range(d3.range(0, this.config.innerXNum));
+      let yScale = d3
+        .scaleQuantize()
+        .domain([this.dataExtent[1], this.dataExtent[3]])
+        .range(d3.range(0, this.config.innerYNum));
+      let grid = [];
+      for (let i = 0; i < this.config.innerXNum; i++) {
+        let row = [];
+        for (let j = 0; j < this.config.innerYNum; j++) {
+          row.push(0);
+        }
+        grid.push(row);
+      }
+      for (let i = 0, len = projdata.length; i < len; i++) {
+        let x = xScale(this.alldata.points[i][0]);
+        let y = yScale(this.alldata.points[i][1]);
+        grid[x][y]++;
+      }
+      for (let i = 0; i < this.config.innerXNum; i++) {
+        for (let j = 0; j < this.config.innerYNum; j++) {
+          if (grid[i][j] < 10) {
+            let diff = 10 - grid[i][j];
+            while (diff > 0) {
+              let x =
+                this.dataExtent[0] + _.random(i * xspan, (i + 1) * xspan, true);
+              let y =
+                this.dataExtent[1] + _.random(j * yspan, (j + 1) * yspan, true);
+              this.alldata.points.push([x, y]);
+              diff--;
+            }
+          }
+        }
+      }
       let cells = d3
         .voronoi()
         .extent([
@@ -153,13 +189,13 @@ export default {
         .polygons(this.alldata.points);
       // 获得Voronoi的多边形
       this.alldata.polygons = cells.map(c => {
-        let pg = Object.assign([], c);
+        let pg = c;
         pg.push(c[0]);
         return pg;
       });
       // Voronoi每次选取多边形中心，重新绘制，多次迭代后变成六边形地图
       let docCoords = [];
-      for (let i = 0; i < 500; i++) {
+      for (let i = 0; i < this.config.mapIterationNum; i++) {
         docCoords = this.alldata.polygons.map(d => d3.polygonCentroid(d));
         cells = d3
           .voronoi()
@@ -170,7 +206,7 @@ export default {
           .polygons(docCoords);
         // 获得Voronoi的多边形
         this.alldata.polygons = cells.map(c => {
-          let pg = Object.assign([], c);
+          let pg = c;
           pg.push(c[0]);
           return pg;
         });
@@ -180,24 +216,24 @@ export default {
       // 构建多边形边上点的坐标与索引的互相映射
       this.alldata.polygons.forEach((pg, index) => {
         pg.forEach((point, i) => {
-          let coords = Object.assign([], point);
-          this.alldata.coords2index.set(JSON.stringify(coords), p_index);
-          this.alldata.index2coords.set(p_index, coords);
+          this.alldata.coords2index.set(JSON.stringify(point), p_index);
+          this.alldata.index2coords.set(p_index, point);
           p_index++;
         });
       });
       // 对于多边形的每条边，获得与之共边的多边形的索引
       this.alldata.polygons.forEach((pg, index) => {
         for (let i = 0, len = pg.length - 1; i < len; i++) {
-          let p1 = Object.assign([], pg[i]); // 多边形上的节点
-          let p2 = Object.assign([], pg[i + 1]); // 多边形上的节点
           if (
-            _.intersection(p1, this.extent).length > 0 ||
-            _.intersection(p2, this.extent).length > 0 ||
-            index > projdata.length
+            // _.intersection(p1, this.extent).length > 0 ||
+            // _.intersection(p2, this.extent).length > 0 ||
+            index > projdata.length &&
+            index < projdata.length + this.config.outerPointNum
           ) {
             continue;
           }
+          let p1 = pg[i]; //Object.assign([], pg[i]); // 多边形上的节点
+          let p2 = pg[i + 1]; //Object.assign([], pg[i + 1]); // 多边形上的节点
           let i1 = this.alldata.coords2index.get(JSON.stringify(p1));
           let i2 = this.alldata.coords2index.get(JSON.stringify(p2));
           let edge1 = i1 + "-" + i2;
@@ -218,7 +254,6 @@ export default {
           }
         }
       });
-
       // 多边形每条边距离的归一化
       let weightScale;
       (function() {
@@ -246,14 +281,18 @@ export default {
         if (docindex.length == 2) {
           let c1 = this.alldata.index2coords.get(parseInt(p1));
           let c2 = this.alldata.index2coords.get(parseInt(p2));
-          // weight = similarityMatrix[docindex[0]][docindex[1]]; // 相似度作为边权重
-          // weight = Math.sqrt((c1[0]-c2[0])**2 + (c1[1]-c2[1])**2) // 2D 欧式距离作为边权重
-          weight =
-            weightScale(
-              Math.sqrt((c1[0] - c2[0]) ** 2 + (c1[1] - c2[1]) ** 2)
-            ) *
-              0.3 +
-            similarityMatrix[docindex[0]][docindex[1]] * 0.7;
+          if (docindex[0] < projdata.length && docindex[1] < projdata.length) {
+            // weight = similarityMatrix[docindex[0]][docindex[1]]; // 相似度作为边权重
+            // weight = Math.sqrt((c1[0]-c2[0])**2 + (c1[1]-c2[1])**2) // 2D 欧式距离作为边权重
+            weight =
+              weightScale(
+                Math.sqrt((c1[0] - c2[0]) ** 2 + (c1[1] - c2[1]) ** 2)
+              ) *
+                0.3 +
+              similarityMatrix[docindex[0]][docindex[1]] * 0.7;
+          } else {
+            weight = 1;
+          }
         } else if (docindex.length == 1) {
           weight = 1 / 0;
         }
@@ -272,7 +311,6 @@ export default {
       for (let [key, value] of this.alldata.graphdata) {
         this.alldata.graph.addVertex(key, value);
       }
-
       let doclink2 = new Set();
       (function() {
         let docCoords2 = instance.alldata.polygons.map(d => d.data);
@@ -300,34 +338,98 @@ export default {
         let radio = _.intersection(doclink, doclink2).length / doclink.length;
         console.log("结构保持率：" + radio.toFixed(2));
       })();
+      // 处理聚类数据
+      (function(){
+        instance.alldata.clusterdata = new Array(projdata.length);
+        Object.keys(cluserdata).forEach(key => {
+          cluserdata[key].forEach(value => {
+            instance.alldata.clusterdata[value] = +key;
+          })
+        })
+      })()
     },
     initMap() {
       this.map = new ol.Map({
-        target: "advanced-hexagon-map",
+        target: "advanced-hexagon-lake-map",
+        layers: [
+          new ollayer.Group({
+            title: "Base maps",
+            layers: [
+              new ollayer.Group({
+                title: "Topography",
+                type: "base",
+                combine: true,
+                visible: true,
+                layers: [
+                  new ollayer.Vector({
+                    source: this.addColorLump(),
+                    opacity: 0.3
+                  }),
+                  new ollayer.Vector({
+                    source: this.addVoronoi()
+                  })
+                ]
+              }),
+              new ollayer.Vector({
+                title: "Cluster",
+                type: "base",
+                visible: false,
+                source: this.addCluster(),
+                opacity: 0.3
+              })
+            ]
+          }),
+          new ollayer.Group({
+            title: "Overlays",
+            layers: [
+              new ollayer.Vector({
+                title: "Road",
+                source: this.addRoad()
+              }),
+              new ollayer.Vector({
+                title: "DocPoint",
+                source: this.addDocPoint()
+              })
+            ]
+          })
+        ],
+        controls: olcontrol.defaults().extend([
+          new olcontrol.OverviewMap({
+            layers: [
+              new ollayer.Group({
+                layers: [
+                  new ollayer.Vector({
+                    source: this.addColorLump()
+                  }),
+                  new ollayer.Vector({
+                    source: this.addVoronoi()
+                  })
+                ]
+              })
+            ]
+          }),
+          new LayerSwitcher({
+            tipLabel: 'Légende', // Optional label for button
+          })
+        ]),
         view: new ol.View({
           projection: new olproj.Projection({
             extent: this.extent
           }),
-          // extent: this.extent,
+          extent: this.extent,
           center: olextent.getCenter(this.extent),
-          zoom: 2
+          zoom: 1
         })
       });
+      let controls = this.map.getControls().getArray();
+      console.log(controls)
     },
     addDocPoint() {
       let vectorSource = new olsource.Vector();
-      this.layers.docpointLayer = new ollayer.Vector({
-        source: vectorSource,
-        zIndex: 3
-      });
-      let xExt = d3.extent(projdata, d => d.x);
-      let yExt = d3.extent(projdata, d => d.y);
-
       for (let i = 0, len = projdata.length; i < len; i++) {
         let center = d3.polygonCentroid(this.alldata.polygons[i]);
         let feature = new ol.Feature({
           geometry: new olgeom.Point(center)
-          // geometry: new olgeom.Point([parseFloat(pg.x), parseFloat(pg.y)])
         });
         feature.setStyle(
           new olstyle.Style({
@@ -339,15 +441,10 @@ export default {
         );
         vectorSource.addFeature(feature);
       }
-      this.map.addLayer(this.layers.docpointLayer);
+      return vectorSource;
     },
-    addVoronoiLayer() {
+    addVoronoi() {
       let vectorSource = new olsource.Vector();
-      this.layers.voronoiLayer = new ollayer.Vector({
-        source: vectorSource,
-        zIndex: 2
-      });
-
       this.alldata.polygons.forEach((pg, index) => {
         let feature = new ol.Feature({
           geometry: new olgeom.Polygon([pg])
@@ -378,37 +475,104 @@ export default {
         feature.setId("voronoi-" + index);
         vectorSource.addFeature(feature);
       });
-      this.map.addLayer(this.layers.voronoiLayer);
+      return vectorSource;
+    },
+    addCluster() {
+      let clsuterNum = Object.keys(cluserdata).length;
+      let color = d3
+        .scaleSequential()
+        .domain([0, clsuterNum])
+        .interpolator(d3.interpolateYlGn);
+      let vectorSource = new olsource.Vector();
+      this.alldata.polygons.forEach((pg, index) => {
+        let feature = new ol.Feature({
+          geometry: new olgeom.Polygon([pg])
+        });
+        if (index >= projdata.length) {
+          feature.setStyle(
+            new olstyle.Style({
+              fill: new olstyle.Fill({
+                color: "rgb(0, 191, 255)"
+              }),
+              stroke: new olstyle.Stroke({
+                color: "grey"
+              })
+            })
+          );
+        } else {
+          feature.setStyle(
+            new olstyle.Style({
+              fill: new olstyle.Fill({
+                color: color(this.alldata.clusterdata[index])
+              }),
+              stroke: new olstyle.Stroke({
+                color: "grey"
+              })
+            })
+          );
+        }
+        feature.setId("clsuter-voronoi-" + index);
+        vectorSource.addFeature(feature);
+      });
+      return vectorSource;
     },
     addColorLump() {
       let vectorSource = new olsource.Vector();
-      this.layers.colorLumpLayer = new ollayer.Vector({
-        source: vectorSource,
-        zIndex: 1
-      });
       for (let [edge, docindex] of this.alldata.edge2docindex) {
         let pg = null;
         let weight = 0;
         let [p1, p2] = edge.split("-");
         p1 = parseInt(p1);
         p2 = parseInt(p2);
-        // console.log(this.alldata.polygons[docindex[0]])
         if (docindex.length == 2) {
-          pg = [
-            this.alldata.index2coords.get(p1),
-            this.alldata.polygons[docindex[0]].data,
-            this.alldata.index2coords.get(p2),
-            this.alldata.polygons[docindex[1]].data,
-            this.alldata.index2coords.get(p1)
-          ];
-          weight = similarityMatrix[docindex[0]][docindex[1]];
+          if (docindex[0] < projdata.length && docindex[1] < projdata.length) {
+            pg = [
+              this.alldata.index2coords.get(p1),
+              this.alldata.polygons[docindex[0]].data,
+              this.alldata.index2coords.get(p2),
+              this.alldata.polygons[docindex[1]].data,
+              this.alldata.index2coords.get(p1)
+            ];
+            weight = similarityMatrix[docindex[0]][docindex[1]];
+          } else {
+            // 有一个多边形表示海洋或湖泊
+            if (
+              docindex[0] < projdata.length &&
+              docindex[1] >= projdata.length
+            ) {
+              pg = [
+                this.alldata.index2coords.get(p1),
+                this.alldata.polygons[docindex[0]].data,
+                this.alldata.index2coords.get(p2),
+                this.alldata.index2coords.get(p1)
+              ];
+              weight = 0;
+            } else if (
+              docindex[1] < projdata.length &&
+              docindex[0] >= projdata.length
+            ) {
+              pg = [
+                this.alldata.index2coords.get(p1),
+                this.alldata.polygons[docindex[1]].data,
+                this.alldata.index2coords.get(p2),
+                this.alldata.index2coords.get(p1)
+              ];
+              weight = 0;
+            }
+          }
         } else if (docindex.length == 1) {
-          pg = [
-            this.alldata.index2coords.get(p1),
-            this.alldata.polygons[docindex[0]].data,
-            this.alldata.index2coords.get(p2),
-            this.alldata.index2coords.get(p1)
-          ];
+          if (docindex[0] < projdata.length) {
+            pg = [
+              this.alldata.index2coords.get(p1),
+              this.alldata.polygons[docindex[0]].data,
+              this.alldata.index2coords.get(p2),
+              this.alldata.index2coords.get(p1)
+            ];
+            weight = 0;
+          }
+        }
+        if (pg == null) {
+          continue;
         }
         let feature = new ol.Feature({
           geometry: new olgeom.Polygon([pg])
@@ -422,21 +586,12 @@ export default {
         );
         vectorSource.addFeature(feature);
       }
-      this.layers.colorLumpLayer.setOpacity(0.3);
-      this.map.addLayer(this.layers.colorLumpLayer);
+      return vectorSource;
     },
-    addRoadLayer() {
+    addRoad() {
       let vectorSource = new olsource.Vector();
-      this.layers.roadLayer = new ollayer.Vector({
-        source: vectorSource,
-        zIndex: 4
-      });
-      // let coordsdata = this.alldata.polygons.filter((d, i) => i < projdata.length);
-      // coordsdata = coordsdata.map(d => { return {x: d.data[0], y: d.data[1]}});
       longdisHighsimilarity().forEach(d => {
         let pair = d.pair.split("-");
-        // let p1 = [projdata[parseInt(pair[0])].x, projdata[parseInt(pair[0])].y];
-        // let p2 = [projdata[parseInt(pair[1])].x, projdata[parseInt(pair[1])].y];
         let pg1 = this.alldata.polygons[parseInt(pair[0])];
         let pg2 = this.alldata.polygons[parseInt(pair[1])];
         let distance = 1 / 0;
@@ -456,7 +611,6 @@ export default {
             }
           }
         }
-
         let startIndex = this.alldata.coords2index.get(JSON.stringify(start));
         let endIndex = this.alldata.coords2index.get(JSON.stringify(end));
         let pathstr = this.alldata.graph
@@ -482,7 +636,7 @@ export default {
         );
         vectorSource.addFeature(feature);
       });
-      this.map.addLayer(this.layers.roadLayer);
+      return vectorSource;
     },
     addClickEventOnRoad() {
       let selectSingleClick = new olinteraction.Select();
@@ -512,24 +666,30 @@ export default {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style lang='scss' scoped>
-.advanced-hexagon {
+.advanced-hexagon-lake {
   width: 100%;
   height: 100%;
 
-  .title {
-    height: 60px;
+  // .title {
+  //   height: 60px;
 
-    h3 {
-      display: inline;
-      line-height: 60px;
-    }
-  }
+  //   h3 {
+  //     display: inline;
+  //     line-height: 60px;
+  //   }
+  // }
 
-  #advanced-hexagon-map {
+  #advanced-hexagon-lake-map {
     width: 100%;
     position: absolute;
-    top: 60px;
+    top: 0px;
     bottom: 0px;
+
+    /deep/ .layer-switcher {
+      ul {
+        padding-left: 1em;
+      }
+    }
   }
 }
 </style>
