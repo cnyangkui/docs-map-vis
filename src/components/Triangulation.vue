@@ -17,8 +17,8 @@ import * as olextent from "ol/extent";
 import * as olproj from "ol/proj";
 import * as olgeom from "ol/geom";
 import * as olstyle from "ol/style";
-import projdata from "../assets/data/thucnews/projection_dense_tfidf_thucnews.json";
-import similarityMatrix from "../assets/data/thucnews/similarity_matrix_thucnews_5round.json";
+import projdata from "../../public/data/output/thucnews/projection_dense_tfidf_thucnews.json";
+import similarityMatrix from "../../public/data/output/thucnews/similarity_matrix_thucnews_5round.json";
 export default {
   name: "Triangulation",
   data() {

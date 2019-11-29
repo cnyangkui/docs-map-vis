@@ -15,9 +15,9 @@ import * as olextent from 'ol/extent';
 import * as olproj from 'ol/proj'
 import * as olgeom from 'ol/geom'
 import * as olstyle from 'ol/style'
-import contourdata from '../assets/data/thucnews/contour.json'
-import projdata from '../assets/data/thucnews/projection_dense_tfidf_thucnews.json'
-import indexdata from '../assets/data/thucnews/index.json'
+import contourdata from '../../public/data/output/thucnews/contour.json'
+import projdata from '../../public/data/output/thucnews/projection_dense_tfidf_thucnews.json'
+import indexdata from '../../public/data/output/thucnews/index.json'
 export default {
   name: 'Contour',
   data() {

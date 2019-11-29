@@ -20,8 +20,8 @@ import * as olstyle from "ol/style";
 import * as olinteraction from "ol/interaction";
 import * as olcontrol from "ol/control";
 import LayerSwitcher from "ol-layerswitcher/src/ol-layerswitcher.js";
-import projdata from "../assets/data/thucnews/projection_dense_tfidf_thucnews.json";
-import similarityMatrix from "../assets/data/thucnews/similarity_matrix_thucnews_5round.json";
+import projdata from "../../public/data/output/thucnews/projection_dense_tfidf_thucnews.json";
+import similarityMatrix from "../../public/data/output/thucnews/similarity_matrix_thucnews_5round.json";
 import longdisHighsimilarity from "../assets/js/dist2similarity.js";
 import Graph from "../assets/js/dijkstra.js";
 export default {
