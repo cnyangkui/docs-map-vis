@@ -28,7 +28,7 @@ export default {
         docpointLayer: null
       },
       mapConfig: {
-        extent: [],//[left, bottom, right, top]
+        extent: [],//[minx, miny, maxx, maxy]
         zoom: 10,
         minZoom: 3,
         maxZoom: 18,

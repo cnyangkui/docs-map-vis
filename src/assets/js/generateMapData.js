@@ -31,52 +31,17 @@ function getExtent() {
 }
 
 /**
- * 在泰森多边形中对相邻的多边形构建边
- * @param {Array} mapExtent [minx, miny, maxx, maxy]
- * @returns {Array} 数据中每一个元素是一个字符串, 形式表现为"[a, b]", 表示索引为 a 的多边形和索引为 b 的多边形相邻
- */
-function getDocLinks(mapExtent) {
-  let doclink = new Set();
-  let docCoords = projdata.map(d => [d.x, d.y]);
-  let cells = d3
-    .voronoi()
-    .extent([
-      [mapExtent[0], mapExtent[1]],
-      [mapExtent[2], mapExtent[3]]
-    ])
-    .polygons(docCoords);
-  let docCoords2index = new Map();
-  cells.forEach((d, i) => {
-    docCoords2index.set(JSON.stringify(d.data), i);
-  });
-  let triangles = d3
-    .voronoi()
-    .extent([
-      [mapExtent[0], mapExtent[1]],
-      [mapExtent[2], mapExtent[3]]
-    ])
-    .triangles(docCoords);
-  triangles.forEach((d, i) => {
-    let [p1, p2, p3] = d;
-    let i1 = docCoords2index.get(JSON.stringify(p1));
-    let i2 = docCoords2index.get(JSON.stringify(p2));
-    let i3 = docCoords2index.get(JSON.stringify(p3));
-    doclink.add([i1, i2].sort((a, b) => a - b) + "");
-    doclink.add([i2, i3].sort((a, b) => a - b) + "");
-    doclink.add([i3, i1].sort((a, b) => a - b) + "");
-  });
-  doclink = Array.from(doclink);
-  return doclink;
-}
-
-/**
  * 在投影数据四周生成随机点
  * @param {Array} dataExtent [minx, miny, maxx, maxy]
  * @param {Array} mapExtent [minx, miny, maxx, maxy]
  * @param {number} pointNum int
  * @returns Array 数组中每个元素是一个坐标 [x, y]
  */
-function generateOuterPoints(dataExtent, mapExtent, pointNum) {
+function generateOuterPoints({
+  dataExtent,
+  mapExtent,
+  pointNum
+}) {
   let outerPoints = [];
   for (let i = 0; i < pointNum; i++) {
     let tmp = i % 4;
@@ -194,6 +159,11 @@ function getVoronoi(mapExtent, allPoints, mapIterationNum) {
   return polygons;
 }
 
+/**
+ * 为所有多边形边上的点
+ * @param {} polygons 
+ * @param {*} indexinfo 
+ */
 function getAllEdges(polygons, indexinfo) {
   let ecoords2index = new Map();
   let ecoords = [];
@@ -210,16 +180,11 @@ function getAllEdges(polygons, indexinfo) {
   // 对于多边形的每条边，获得与之共边的多边形的索引
   polygons.forEach((pg, index) => {
     for (let i = 0, len = pg.length - 1; i < len; i++) {
-      if (
-        // _.intersection(p1, this.extent).length > 0 ||
-        // _.intersection(p2, this.extent).length > 0 ||
-        index >= indexinfo.outerPoints[0] &&
-        index < indexinfo.outerPoints[1]
-      ) {
+      if (index >= indexinfo.outerPoint[0] && index < indexinfo.outerPoint[1]) {
         continue;
       }
-      let p1 = pg[i]; //Object.assign([], pg[i]); // 多边形上的节点
-      let p2 = pg[i + 1]; //Object.assign([], pg[i + 1]); // 多边形上的节点
+      let p1 = pg[i]; // 多边形上的节点
+      let p2 = pg[i + 1]; // 多边形上的节点
       let i1 = ecoords2index.get(JSON.stringify(p1));
       let i2 = ecoords2index.get(JSON.stringify(p2));
       let edge1 = i1 + "-" + i2;
@@ -240,7 +205,11 @@ function getAllEdges(polygons, indexinfo) {
       }
     }
   });
-  return edges;
+  return {
+    ecoords,
+    ecoords2index,
+    edges
+  };
 }
 
 function getGraph(edges, ecoords) {
@@ -273,11 +242,8 @@ function getGraph(edges, ecoords) {
         // weight = similarityMatrix[docindex[0]][docindex[1]]; // 相似度作为边权重
         // weight = Math.sqrt((c1[0]-c2[0])**2 + (c1[1]-c2[1])**2) // 2D 欧式距离作为边权重
         weight =
-          weightScale(
-            Math.sqrt((c1[0] - c2[0]) ** 2 + (c1[1] - c2[1]) ** 2)
-          ) *
-          0.3 +
-          similarityMatrix[docindex[0]][docindex[1]] * 0.7;
+          weightScale(Math.sqrt((c1[0] - c2[0]) ** 2 + (c1[1] - c2[1]) ** 2)) * 0.3 
+            + similarityMatrix[docindex[0]][docindex[1]] * 0.7;
       } else {
         weight = 1;
       }
@@ -308,38 +274,28 @@ function getCluster() {
   return clusterdata;
 }
 
-export default function generateMapData() {
-  
+function shortestpath(graphdata) {
   // 构造Graph
-  for (let [key, value] of this.alldata.graphdata) {
-    this.alldata.graph.addVertex(key, value);
+  let graph = new Graph();
+  for (let [key, value] of graphdata) {
+    graph.addVertex(key, value);
   }
-  let doclink2 = new Set();
-  (function () {
-    let docCoords2 = instance.alldata.polygons.map(d => d.data);
-    let docCoords2index2 = new Map();
-    instance.alldata.polygons.forEach((d, i) => {
-      docCoords2index2.set(JSON.stringify(d.data), i);
-    });
-    let triangles2 = d3
-      .voronoi()
-      .extent([
-        [instance.extent[0], instance.extent[1]],
-        [instance.extent[2], instance.extent[3]]
-      ])
-      .triangles(docCoords2);
-    triangles2.forEach((d, i) => {
-      let [p1, p2, p3] = d;
-      let i1 = docCoords2index2.get(JSON.stringify(p1));
-      let i2 = docCoords2index2.get(JSON.stringify(p2));
-      let i3 = docCoords2index2.get(JSON.stringify(p3));
-      doclink2.add([i1, i2].sort((a, b) => a - b) + "");
-      doclink2.add([i2, i3].sort((a, b) => a - b) + "");
-      doclink2.add([i3, i1].sort((a, b) => a - b) + "");
-    });
-    doclink2 = Array.from(doclink2);
-    let radio = _.intersection(doclink, doclink2).length / doclink.length;
-    console.log("结构保持率：" + radio.toFixed(2));
-  })();
+
+}
+
+function generateMapData(randomPointInfo, mapIterationNum) {
+  let {
+    dataExtent,
+    mapExtent
+  } = getExtent();
+  let outerPoints = generateOuterPoints(dataExtent, mapExtent, randomPointInfo.outerPointNum);
+  let innerPoints = generateInnerPoints(dataExtent, randomPointInfo.innerXNum, randomPointInfo.innerYNum);
+  let allPoints = projdata.map(d => [d.x, d.y]).concat(outerPoints).concat(innerPoints);
+  let infoIndexInfo = {
+    dataPoint: [0, projdata.length],
+    outerPoint: [projdata.length, projdata.length + outerPoints.length],
+    innerPoint: [projdata.length + outerPoints.length, allPoints.length]
+  };
+  let polygons = getVoronoi(mapExtent, allPoints, mapIterationNum);
 
 }

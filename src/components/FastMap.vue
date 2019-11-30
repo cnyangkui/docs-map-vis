@@ -31,7 +31,7 @@ export default {
     return {
       map: null,
       dataExtent: [],
-      extent: [], //[left, bottom, right, top],
+      extent: [], //[minx, miny, maxx, maxy]
       alldata: {
         points: [],
         polygons: [], // Voronoi多边形

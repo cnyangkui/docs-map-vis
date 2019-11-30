@@ -29,7 +29,7 @@ export default {
         triangulationLayer: null,
         colorLumpLayer: null
       },
-      extent: [], //[left, bottom, right, top],
+      extent: [], //[minx, miny, maxx, maxy]
       color: null
     };
   },

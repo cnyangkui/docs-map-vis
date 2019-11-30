@@ -43,7 +43,7 @@
         <p>Enhanced Voronoi + Road + Ocean + Lake</p>
       </div>
       <div class="item">
-        <a href="/map"><img src="/images/8.jpg"/></a>
+        <a href="/voronoiComparison"><img src="/images/8.jpg"/></a>
         <p>Comparing of Voronoi</p>
       </div>
       <div class="item">

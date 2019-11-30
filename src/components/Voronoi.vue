@@ -29,7 +29,7 @@ export default {
         voronoiLayer: null,
         colorLumpLayer: null
       },
-      extent: [], //[minx, miny, maxx, maxy],
+      extent: [], //[minx, miny, maxx, maxy]
       color: null
     };
   },

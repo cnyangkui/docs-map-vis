@@ -34,12 +34,12 @@ export default {
         roadLayer: null
       },
       dataExtent: [],
-      extent: [], //[left, bottom, right, top],
+      mapExtent: [], //[minx, miny, maxx, maxy]
       alldata: {
         points: [],
         polygons: [], // Voronoi多边形
-        coords2index: new Map(), // 多边形边上点的坐标到索引的映射
-        index2coords: new Map(), // 多边形边上点的索引到坐标的映射
+        ecoords2index: new Map(), // 多边形边上点的坐标到索引的映射
+        ecoords: [], // 多边形边上点的索引到坐标的映射
         edge2docindex: new Map(), // 与每条边共边的多边形索引
         graphdata: new Map(), // 根据多边形构造的图数据
         graph: new Graph() // 根据多边形的边构造图
@@ -62,7 +62,7 @@ export default {
   },
   mounted() {
     this.$nextTick(() => {
-      this.loadSettings();
+      let start = new Date();
       this.processData();
       this.initMap();
       this.addColorLump();
@@ -70,16 +70,19 @@ export default {
       this.addRoadLayer();
       this.addDocPoint();
       this.addClickEventOnRoad();
+      let end = new Date();
+      console.log("耗时:", end-start);
     });
   },
   methods: {
-    loadSettings() {
+    processData() {
+      let instance = this;
       let xExt = d3.extent(projdata, d => d.x);
       let yExt = d3.extent(projdata, d => d.y);
       let x = xExt[1] - xExt[0] > yExt[1] - yExt[0] ? xExt : yExt;
       let y = xExt[1] - xExt[0] < yExt[1] - yExt[0] ? xExt : yExt;
       this.dataExtent = [x[0], y[0], x[1], y[1]];
-      this.extent = [
+      this.mapExtent = [
         x[0] - 0.1 * (x[1] - x[0]),
         y[0] - 0.1 * (y[1] - y[0]),
         x[1] + 0.1 * (x[1] - x[0]),
@@ -93,17 +96,14 @@ export default {
         .scaleLinear()
         .domain([0.2, 0.5])
         .range([1, 5]);
-    },
-    processData() {
-      let instance = this;
       let doclink = new Set();
       (function() {
         let docCoords = projdata.map(d => [d.x, d.y]);
         let cells = d3
           .voronoi()
           .extent([
-            [instance.extent[0], instance.extent[1]],
-            [instance.extent[2], instance.extent[3]]
+            [instance.mapExtent[0], instance.mapExtent[1]],
+            [instance.mapExtent[2], instance.mapExtent[3]]
           ])
           .polygons(docCoords);
         let docCoords2index = new Map();
@@ -113,8 +113,8 @@ export default {
         let triangles = d3
           .voronoi()
           .extent([
-            [instance.extent[0], instance.extent[1]],
-            [instance.extent[2], instance.extent[3]]
+            [instance.mapExtent[0], instance.mapExtent[1]],
+            [instance.mapExtent[2], instance.mapExtent[3]]
           ])
           .triangles(docCoords);
         triangles.forEach((d, i) => {
@@ -128,27 +128,29 @@ export default {
         });
         doclink = Array.from(doclink);
       })();
+      // 在四周生成随机点
       this.alldata.points = projdata.map(d => [d.x, d.y]);
       for (let i = 0; i < this.config.outerPointNum; i++) {
         let tmp = i % 4;
         if (tmp == 0) {
-          let x = _.random(this.extent[0], this.dataExtent[2], true);
-          let y = _.random(this.extent[1], this.dataExtent[1], true);
+          let x = _.random(this.mapExtent[0], this.dataExtent[2], true);
+          let y = _.random(this.mapExtent[1], this.dataExtent[1], true);
           this.alldata.points.push([x, y]);
         } else if (tmp == 1) {
-          let x = _.random(this.dataExtent[2], this.extent[2], true);
-          let y = _.random(this.extent[1], this.dataExtent[3], true);
+          let x = _.random(this.dataExtent[2], this.mapExtent[2], true);
+          let y = _.random(this.mapExtent[1], this.dataExtent[3], true);
           this.alldata.points.push([x, y]);
         } else if (tmp == 2) {
-          let x = _.random(this.dataExtent[0], this.extent[2], true);
-          let y = _.random(this.dataExtent[3], this.extent[3], true);
+          let x = _.random(this.dataExtent[0], this.mapExtent[2], true);
+          let y = _.random(this.dataExtent[3], this.mapExtent[3], true);
           this.alldata.points.push([x, y]);
         } else {
-          let x = _.random(this.extent[0], this.dataExtent[0], true);
-          let y = _.random(this.dataExtent[1], this.extent[3], true);
+          let x = _.random(this.mapExtent[0], this.dataExtent[0], true);
+          let y = _.random(this.dataExtent[1], this.mapExtent[3], true);
           this.alldata.points.push([x, y]);
         }
       }
+      // 在投影数据稀疏处生成随机点
       let xspan =
         (this.dataExtent[2] - this.dataExtent[0]) / this.config.innerXNum;
       let yspan =
@@ -192,8 +194,8 @@ export default {
       let cells = d3
         .voronoi()
         .extent([
-          [instance.extent[0], instance.extent[1]],
-          [instance.extent[2], instance.extent[3]]
+          [instance.mapExtent[0], instance.mapExtent[1]],
+          [instance.mapExtent[2], instance.mapExtent[3]]
         ])
         .polygons(this.alldata.points);
       // 获得Voronoi的多边形  
@@ -209,8 +211,8 @@ export default {
         cells = d3
           .voronoi()
           .extent([
-            [this.extent[0], this.extent[1]],
-            [this.extent[2], this.extent[3]]
+            [this.mapExtent[0], this.mapExtent[1]],
+            [this.mapExtent[2], this.mapExtent[3]]
           ])
           .polygons(docCoords);
         // 获得Voronoi的多边形
@@ -222,47 +224,49 @@ export default {
       }
 
       let p_index = 0;
-      // 构建多边形边上点的坐标与索引的互相映射
-      this.alldata.polygons.forEach((pg, index) => {
-        pg.forEach((point, i) => {
-          this.alldata.coords2index.set(JSON.stringify(point), p_index);
-          this.alldata.index2coords.set(p_index, point);
+      // 构建多边形边上点的坐标与索引的互相映射，忽略海洋隐喻的多边形
+      for (let i in this.alldata.polygons) {
+        if (
+          i >= projdata.length &&
+          i < projdata.length + this.config.outerPointNum
+        ) {
+          continue;
+        }
+        this.alldata.polygons[i].forEach(point => {
+          this.alldata.ecoords2index.set(JSON.stringify(point), p_index);
+          this.alldata.ecoords[p_index] = point;
           p_index++;
         });
-      });
+      }
       // 对于多边形的每条边，获得与之共边的多边形的索引
-      this.alldata.polygons.forEach((pg, index) => {
+      for (let pi in this.alldata.polygons) {
+        if (pi >= projdata.length && pi < projdata.length + this.config.outerPointNum) {
+          continue;
+        }
+        let pg = this.alldata.polygons[pi];  
         for (let i = 0, len = pg.length - 1; i < len; i++) {
-          if (
-            // _.intersection(p1, this.extent).length > 0 ||
-            // _.intersection(p2, this.extent).length > 0 ||
-            (index > projdata.length &&
-              index < projdata.length + this.config.outerPointNum)
-          ) {
-            continue;
-          }
-          let p1 = pg[i]; //Object.assign([], pg[i]); // 多边形上的节点
-          let p2 = pg[i+1]; //Object.assign([], pg[i + 1]); // 多边形上的节点
-          let i1 = this.alldata.coords2index.get(JSON.stringify(p1));
-          let i2 = this.alldata.coords2index.get(JSON.stringify(p2));
+          let p1 = pg[i]; // 多边形上的节点
+          let p2 = pg[i+1];  // 多边形上的节点
+          let i1 = this.alldata.ecoords2index.get(JSON.stringify(p1));
+          let i2 = this.alldata.ecoords2index.get(JSON.stringify(p2));
           let edge1 = i1 + "-" + i2;
           let edge2 = i2 + "-" + i1;
           if (this.alldata.edge2docindex.has(edge1)) {
             let value = this.alldata.edge2docindex.get(edge1);
-            value.push(index);
+            value.push(pi);
             this.alldata.edge2docindex.set(edge1, value);
           } else {
-            this.alldata.edge2docindex.set(edge1, [index]);
+            this.alldata.edge2docindex.set(edge1, [pi]);
           }
           if (this.alldata.edge2docindex.has(edge2)) {
             let value = this.alldata.edge2docindex.get(edge2);
-            value.push(index);
+            value.push(pi);
             this.alldata.edge2docindex.set(edge2, value);
           } else {
-            this.alldata.edge2docindex.set(edge2, [index]);
+            this.alldata.edge2docindex.set(edge2, [pi]);
           }
         }
-      });
+      };
       // 多边形每条边距离的归一化
       let weightScale;
       (function() {
@@ -271,8 +275,8 @@ export default {
           let [p1, p2] = edge.split("-");
           let weight = 0;
           if (docindex.length == 2) {
-            let c1 = instance.alldata.index2coords.get(parseInt(p1));
-            let c2 = instance.alldata.index2coords.get(parseInt(p2));
+            let c1 = instance.alldata.ecoords[parseInt(p1)];
+            let c2 = instance.alldata.ecoords[parseInt(p2)];
             weight = Math.sqrt((c1[0] - c2[0]) ** 2 + (c1[1] - c2[1]) ** 2); // 2D 欧式距离作为边权重
             weightlist.push(weight);
           }
@@ -288,8 +292,8 @@ export default {
         let [p1, p2] = edge.split("-");
         let weight = 0;
         if (docindex.length == 2) {
-          let c1 = this.alldata.index2coords.get(parseInt(p1));
-          let c2 = this.alldata.index2coords.get(parseInt(p2));
+          let c1 = this.alldata.ecoords[parseInt(p1)];
+          let c2 = this.alldata.ecoords[parseInt(p2)];
           if (docindex[0] < projdata.length && docindex[1] < projdata.length) {
             // weight = similarityMatrix[docindex[0]][docindex[1]]; // 相似度作为边权重
             // weight = Math.sqrt((c1[0]-c2[0])**2 + (c1[1]-c2[1])**2) // 2D 欧式距离作为边权重
@@ -330,8 +334,8 @@ export default {
         let triangles2 = d3
           .voronoi()
           .extent([
-            [instance.extent[0], instance.extent[1]],
-            [instance.extent[2], instance.extent[3]]
+            [instance.mapExtent[0], instance.mapExtent[1]],
+            [instance.mapExtent[2], instance.mapExtent[3]]
           ])
           .triangles(docCoords2);
         triangles2.forEach((d, i) => {
@@ -353,10 +357,10 @@ export default {
         target: "enhanced-voronoi-ocean-lake-map",
         view: new ol.View({
           projection: new olproj.Projection({
-            extent: this.extent
+            extent: this.mapExtent
           }),
-          // extent: this.extent,
-          center: olextent.getCenter(this.extent),
+          // extent: this.mapExtent,
+          center: olextent.getCenter(this.mapExtent),
           zoom: 1.8
         })
       });
@@ -438,11 +442,11 @@ export default {
         p2 = parseInt(p2);
         if (docindex.length == 2) {
           pg = [
-            this.alldata.index2coords.get(p1),
+            this.alldata.ecoords[p1],
             this.alldata.polygons[docindex[0]].data,
-            this.alldata.index2coords.get(p2),
+            this.alldata.ecoords[p2],
             this.alldata.polygons[docindex[1]].data,
-            this.alldata.index2coords.get(p1)
+            this.alldata.ecoords[p1]
           ];
           if (docindex[0] < projdata.length && docindex[1] < projdata.length) {
             weight = similarityMatrix[docindex[0]][docindex[1]];
@@ -451,10 +455,10 @@ export default {
           }
         } else if (docindex.length == 1) {
           pg = [
-            this.alldata.index2coords.get(p1),
+            this.alldata.ecoords[p1],
             this.alldata.polygons[docindex[0]].data,
-            this.alldata.index2coords.get(p2),
-            this.alldata.index2coords.get(p1)
+            this.alldata.ecoords[p2],
+            this.alldata.ecoords[p1]
           ];
         }
         let feature = new ol.Feature({
@@ -490,9 +494,9 @@ export default {
         let start = pg1[0],
           end = pg2[0];
         for (let i = 0, len1 = pg1.length; i < len1; i++) {
-          if (_.intersection(pg1[i], this.extent).length > 0) continue;
+          if (_.intersection(pg1[i], this.mapExtent).length > 0) continue;
           for (let j = 0, len2 = pg2.length; j < len2; j++) {
-            if (_.intersection(pg2[j], this.extent).length > 0) continue;
+            if (_.intersection(pg2[j], this.mapExtent).length > 0) continue;
             let p1 = pg1[i];
             let p2 = pg2[j];
             let tmp = Math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2);
@@ -504,8 +508,8 @@ export default {
           }
         }
 
-        let startIndex = this.alldata.coords2index.get(JSON.stringify(start));
-        let endIndex = this.alldata.coords2index.get(JSON.stringify(end));
+        let startIndex = this.alldata.ecoords2index.get(JSON.stringify(start));
+        let endIndex = this.alldata.ecoords2index.get(JSON.stringify(end));
         let pathstr = this.alldata.graph
           .shortestPath(startIndex + "", endIndex + "")
           .concat([startIndex + ""])
@@ -513,7 +517,7 @@ export default {
         let pathcoords = [];
         pathcoords.push(pg1.data);
         pathstr.forEach(pid => {
-          pathcoords.push(this.alldata.index2coords.get(parseInt(pid)));
+          pathcoords.push(this.alldata.ecoords[parseInt(pid)]);
         });
         pathcoords.push(pg2.data);
         let feature = new ol.Feature({

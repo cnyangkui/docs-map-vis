@@ -33,7 +33,7 @@ export default {
         colorLumpLayer: null,
         roadLayer: null
       },
-      extent: [], //[left, bottom, right, top],
+      extent: [], //[minx, miny, maxx, maxy]
       alldata: {
         polygons: [], // Voronoi多边形
         coords2index: new Map(), // 多边形边上点的坐标到索引的映射
