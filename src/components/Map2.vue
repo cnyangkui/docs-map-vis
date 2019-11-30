@@ -1,9 +1,9 @@
 <template>
-  <div class="fastmap-container">
+  <div class="map-container">
     <!-- <div class="title">
       <h3>Advanced Hexagon</h3>
     </div> -->
-    <div id="fastmap"></div>
+    <div id="map"></div>
   </div>
 </template>
 
@@ -25,7 +25,7 @@ import similarityMatrix from "../../public/data/output/thucnews/similarity_matri
 import cluserdata from "../../public/data/output/thucnews/cluster.json"
 import processMapData from "../assets/js/processMapData.js"
 export default {
-  name: "FastMap",
+  name: "Map",
   data() {
     return {
       map: null,
@@ -85,7 +85,7 @@ export default {
     },
     initMap() {
       this.map = new ol.Map({
-        target: "fastmap",
+        target: "map",
         layers: [
           new ollayer.Group({
             title: "Base maps",
@@ -367,7 +367,7 @@ export default {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style lang='scss' scoped>
-.fastmap-container {
+.map-container {
   width: 100%;
   height: 100%;
 
@@ -380,7 +380,7 @@ export default {
   //   }
   // }
 
-  #fastmap {
+  #map {
     width: 100%;
     position: absolute;
     top: 0px;

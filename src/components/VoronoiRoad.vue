@@ -282,7 +282,7 @@ export default {
         source: vectorSource,
         zIndex: 4
       });
-      longdisHighsimilarity().forEach(d => {
+      longdisHighsimilarity(projdata, similarityMatrix).forEach(d => {
         let pair = d.pair.split("-");
         // let p1 = [projdata[parseInt(pair[0])].x, projdata[parseInt(pair[0])].y];
         // let p2 = [projdata[parseInt(pair[1])].x, projdata[parseInt(pair[1])].y];

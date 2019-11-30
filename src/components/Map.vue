@@ -36,7 +36,7 @@ export default {
         points: [],
         polygons: [], // Voronoi多边形
         ecoords2index: new Map(), // 多边形边上点的坐标到索引的映射
-        ecoords: new Map(), // 多边形边上点的索引到坐标的映射
+        ecoords: [], // 多边形边上点的索引到坐标的映射
         edge2docindex: new Map(), // 与每条边共边的多边形索引
         graphdata: new Map(), // 根据多边形构造的图数据
         graph: new Graph(), // 根据多边形的边构造图
@@ -539,7 +539,7 @@ export default {
             ];
             weight = similarityMatrix[docindex[0]][docindex[1]];
           } else {
-            // 有一个多边形表示海洋或湖泊
+            // 有一个多边形表示湖泊
             if (
               docindex[0] < projdata.length &&
               docindex[1] >= projdata.length
@@ -549,7 +549,7 @@ export default {
                 this.alldata.polygons[docindex[0]].data,
                 this.alldata.ecoords[p2],
                 this.alldata.ecoords[p1]
-              ];
+              ];  // 靠近湖泊的多边形中的小三角形
               weight = 0;
             } else if (
               docindex[1] < projdata.length &&
@@ -565,7 +565,7 @@ export default {
             }
           }
         } else if (docindex.length == 1) {
-          if (docindex[0] < projdata.length) {
+          if (docindex[0] < projdata.length) { //单独的岛屿
             pg = [
               this.alldata.ecoords[p1],
               this.alldata.polygons[docindex[0]].data,
@@ -594,7 +594,7 @@ export default {
     },
     addRoad() {
       let vectorSource = new olsource.Vector();
-      longdisHighsimilarity().forEach(d => {
+      longdisHighsimilarity(projdata, similarityMatrix).forEach(d => {
         let pair = d.pair.split("-");
         let pg1 = this.alldata.polygons[parseInt(pair[0])];
         let pg2 = this.alldata.polygons[parseInt(pair[1])];

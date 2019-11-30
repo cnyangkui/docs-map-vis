@@ -1,11 +1,7 @@
-const fs = require("fs");
-const d3 = require("d3")
-const _ = require("lodash")
-const projdata = require("../../../public/data/output/thucnews/projection_dense_tfidf_thucnews.json");
-const similarityMatrix = require("../../../public/data/output/thucnews/similarity_matrix_thucnews_5round.json");
-const cluserdata = require("../../../public/data/output/thucnews/cluster.json")
-const longdisHighsimilarity = require("./dist2similarity.js");
-const Graph = require("./dijkstra.js");
+import * as d3 from "d3"
+import _ from "lodash"
+import longdisHighsimilarity from "./dist2similarity.js";
+import Graph from "./dijkstra.js";
 
 /**
  * 获取投影数据的范围
@@ -362,7 +358,7 @@ function shortestPath(projdata, similarityMatrix, dist_quantile = 0.3, similarit
  * }
  * @returns {Object} {dataExtent: Array, mapExtent: Array, allPoints: Array, pointIndexInfo: Object, polygons: Array, ecoords: Array, ecoords2index: Map, edge2docindex: Map, paths: Array, clusters: Object }
  */
-function processMapData(projdata, similarityMatrix, clusterdata, config) {
+export default function processMapData(projdata, similarityMatrix, clusterdata, config) {
   let { dataExtent, mapExtent } = getExtent(projdata);
   let outerPoints = generateOuterPoints(dataExtent, mapExtent, config.outerPointNum);
   let innerPoints = generateInnerPoints(projdata, dataExtent, config.innerXNum, config.innerYNum);
@@ -379,21 +375,3 @@ function processMapData(projdata, similarityMatrix, clusterdata, config) {
   let paths = shortestPath(projdata, similarityMatrix, config.dist_quantile, config.similarity_threshold, graphdata, polygons, ecoords, ecoords2index);
   return { dataExtent, mapExtent, allPoints, pointIndexInfo, polygons, ecoords, ecoords2index, edge2docindex, paths, clusters }
 }
-
-let config= {
-  mapIterationNum: 50,
-  outerPointNum: 500,
-  innerXNum: 20,
-  innerYNum: 20,
-  dist_quantile: 0.3, // 计算最短路径时的约束，欧氏距离分位数阈值
-  similarity_threshold: 0.2 // 计算最短路径时的约束，相似度阈值
-};
-let generatedData = processMapData(projdata, similarityMatrix, cluserdata, config);
-let writePath = "./public/data/output/thucnews/mapdata.json"
-console.log("开始写入数据......");
-fs.writeFile(writePath, JSON.stringify(generatedData),  function(err) {
-  if (err) {
-      return console.error(err);
-  }
-  console.log("数据写入成功！");
-});

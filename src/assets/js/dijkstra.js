@@ -26,7 +26,7 @@ function PriorityQueue () {
 /**
  * Pathfinding starts here
  */
-export default function Graph(){
+function Graph(){
   var INFINITY = 1/0;
   this.vertices = {};
 
@@ -87,6 +87,10 @@ export default function Graph(){
     return path;
   };
 }
+
+export default Graph;
+// module.exports = Graph;
+
 
 // var g = new Graph();
 

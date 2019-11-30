@@ -439,7 +439,7 @@ export default {
       });
       // let coordsdata = this.alldata.polygons.filter((d, i) => i < projdata.length);
       // coordsdata = coordsdata.map(d => { return {x: d.data[0], y: d.data[1]}});
-      longdisHighsimilarity().forEach(d => {
+      longdisHighsimilarity(projdata, similarityMatrix).forEach(d => {
         let pair = d.pair.split("-");
         // let p1 = [projdata[parseInt(pair[0])].x, projdata[parseInt(pair[0])].y];
         // let p2 = [projdata[parseInt(pair[1])].x, projdata[parseInt(pair[1])].y];
