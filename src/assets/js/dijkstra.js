@@ -88,8 +88,8 @@ function Graph(){
   };
 }
 
-export default Graph;
-// module.exports = Graph;
+// export default Graph;
+module.exports = Graph;
 
 
 // var g = new Graph();

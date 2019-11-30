@@ -27,5 +27,5 @@ function getLongdisHighsimilarity(projdata, similarityMatrix, dist_quantile=0.3,
   return filter;
 }
 
-export default getLongdisHighsimilarity;
-// module.exports = getLongdisHighsimilarity;
+// export default getLongdisHighsimilarity;
+module.exports = getLongdisHighsimilarity;

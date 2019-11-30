@@ -23,32 +23,32 @@ import LayerSwitcher from "ol-layerswitcher/src/ol-layerswitcher.js";
 import projdata from "../../public/data/output/thucnews/projection_dense_tfidf_thucnews.json";
 import similarityMatrix from "../../public/data/output/thucnews/similarity_matrix_thucnews_5round.json";
 import cluserdata from "../../public/data/output/thucnews/cluster.json"
-import processMapData from "../assets/js/processMapData.js"
+import mapdata from "../../public/data/output/thucnews/mapdata.json";
 export default {
   name: "FastMap",
   data() {
     return {
       map: null,
-      mapdata: {
-        dataExtent: null, //[minx, miny, maxx, maxy]
-        mapExtent: null, //[minx, miny, maxx, maxy]
-        allPoints: null, 
-        pointIndexInfo: null, 
-        polygons: null, // Voronoi多边形
-        ecoords: null, // 多边形边上顶点的坐标
-        ecoords2index: null, // <多边形顶点坐标, 多边形顶点索引>
-        edge2docindex: null, // <多边形的边, 共边多边形索引>
-        paths: null, 
-        clusters: null 
-      },
-      config: {
-        mapIterationNum: 50,
-        outerPointNum: 500,
-        innerXNum: 20,
-        innerYNum: 20,
-        dist_quantile: 0.3, // 计算最短路径时的约束，欧氏距离分位数阈值
-        similarity_threshold: 0.2 // 计算最短路径时的约束，相似度阈值
-      },
+      // mapdata: {
+      //   dataExtent: null, //[minx, miny, maxx, maxy]
+      //   mapExtent: null, //[minx, miny, maxx, maxy]
+      //   allPoints: null, 
+      //   pointIndexInfo: null, 
+      //   polygons: null, // Voronoi多边形
+      //   ecoords: null, // 多边形边上顶点的坐标
+      //   ecoords2index: null, // <多边形顶点坐标, 多边形顶点索引>
+      //   edge2docindex: null, // <多边形的边, 共边多边形索引>
+      //   paths: null, 
+      //   clusters: null 
+      // },
+      // config: {
+      //   mapIterationNum: 50,
+      //   outerPointNum: 500,
+      //   innerXNum: 20,
+      //   innerYNum: 20,
+      //   dist_quantile: 0.3, // 计算最短路径时的约束，欧氏距离分位数阈值
+      //   similarity_threshold: 0.2 // 计算最短路径时的约束，相似度阈值
+      // },
       color: null,
       roadwithScale: null
     };
@@ -80,8 +80,7 @@ export default {
         .scaleLinear()
         .domain([0.2, 0.5])
         .range([1, 5]);
-      this.mapdata = processMapData(projdata, similarityMatrix, cluserdata, this.config);
-      console.log(this.mapdata)
+      console.log(mapdata)
     },
     initMap() {
       this.map = new ol.Map({
@@ -149,10 +148,10 @@ export default {
         ]),
         view: new ol.View({
           projection: new olproj.Projection({
-            extent: this.mapdata.mapExtent
+            extent: mapdata.mapExtent
           }),
-          extent: this.mapdata.mapExtent,
-          center: olextent.getCenter(this.mapdata.mapExtent),
+          extent: mapdata.mapExtent,
+          center: olextent.getCenter(mapdata.mapExtent),
           zoom: 1
         })
       });
@@ -160,7 +159,7 @@ export default {
     addDocPoint() {
       let vectorSource = new olsource.Vector();
       for (let i = 0, len = projdata.length; i < len; i++) {
-        let center = d3.polygonCentroid(this.mapdata.polygons[i]);
+        let center = d3.polygonCentroid(mapdata.polygons[i]);
         let feature = new ol.Feature({
           geometry: new olgeom.Point(center)
         });
@@ -178,7 +177,7 @@ export default {
     },
     addVoronoi() {
       let vectorSource = new olsource.Vector();
-      this.mapdata.polygons.forEach((pg, index) => {
+      mapdata.polygons.forEach((pg, index) => {
         let feature = new ol.Feature({
           geometry: new olgeom.Polygon([pg])
         });
@@ -217,7 +216,7 @@ export default {
         .domain([0, clsuterNum])
         .interpolator(d3.interpolateYlGn);
       let vectorSource = new olsource.Vector();
-      this.mapdata.polygons.forEach((pg, index) => {
+      mapdata.polygons.forEach((pg, index) => {
         let feature = new ol.Feature({
           geometry: new olgeom.Polygon([pg])
         });
@@ -236,7 +235,7 @@ export default {
           feature.setStyle(
             new olstyle.Style({
               fill: new olstyle.Fill({
-                color: color(this.mapdata.clusters[index])
+                color: color(mapdata.clusters[index])
               }),
               stroke: new olstyle.Stroke({
                 color: "grey"
@@ -251,7 +250,9 @@ export default {
     },
     addColorLump() {
       let vectorSource = new olsource.Vector();
-      for (let [edge, docindex] of this.mapdata.edge2docindex) {
+      for (let edge in mapdata.edge2docindex) {
+        let docindex = mapdata.edge2docindex[edge];
+        docindex = docindex.map(d => +d);
         let pg = null;
         let weight = 0;
         let [p1, p2] = edge.split("-");
@@ -260,11 +261,11 @@ export default {
         if (docindex.length == 2) {
           if (docindex[0] < projdata.length && docindex[1] < projdata.length) {
             pg = [
-              this.mapdata.ecoords[p1],
-              this.mapdata.polygons[docindex[0]].data,
-              this.mapdata.ecoords[p2],
-              this.mapdata.polygons[docindex[1]].data,
-              this.mapdata.ecoords[p1]
+              mapdata.ecoords[p1],
+              mapdata.finalPoints[docindex[0]],
+              mapdata.ecoords[p2],
+              mapdata.finalPoints[docindex[1]],
+              mapdata.ecoords[p1]
             ];
             weight = similarityMatrix[docindex[0]][docindex[1]];
           } else {
@@ -274,10 +275,10 @@ export default {
               docindex[1] >= projdata.length
             ) {
               pg = [
-                this.mapdata.ecoords[p1],
-                this.mapdata.polygons[docindex[0]].data,
-                this.mapdata.ecoords[p2],
-                this.mapdata.ecoords[p1]
+                mapdata.ecoords[p1],
+                mapdata.finalPoints[docindex[0]],
+                mapdata.ecoords[p2],
+                mapdata.ecoords[p1]
               ];
               weight = 0;
             } else if (
@@ -285,10 +286,10 @@ export default {
               docindex[0] >= projdata.length
             ) {
               pg = [
-                this.mapdata.ecoords[p1],
-                this.mapdata.polygons[docindex[1]].data,
-                this.mapdata.ecoords[p2],
-                this.mapdata.ecoords[p1]
+                mapdata.ecoords[p1],
+                mapdata.finalPoints[docindex[1]],
+                mapdata.ecoords[p2],
+                mapdata.ecoords[p1]
               ];
               weight = 0;
             }
@@ -296,10 +297,10 @@ export default {
         } else if (docindex.length == 1) {
           if (docindex[0] < projdata.length) {
             pg = [
-              this.mapdata.ecoords[p1],
-              this.mapdata.polygons[docindex[0]].data,
-              this.mapdata.ecoords[p2],
-              this.mapdata.ecoords[p1]
+              mapdata.ecoords[p1],
+              mapdata.finalPoints[docindex[0]],
+              mapdata.ecoords[p2],
+              mapdata.ecoords[p1]
             ];
             weight = 0;
           }
@@ -323,7 +324,9 @@ export default {
     },
     addRoad() {
       let vectorSource = new olsource.Vector();
-      for(let [pair, path] of this.mapdata.paths) {
+      for(let pair in mapdata.paths) {
+        let path = mapdata.paths[pair];
+        let pairArr = pair.split("-");
         let feature = new ol.Feature({
           geometry: new olgeom.LineString(path)
         });
@@ -331,7 +334,7 @@ export default {
           new olstyle.Style({
             stroke: new olstyle.Stroke({
               color: "rgb(255, 165, 0, 0.3)",
-              width: this.roadwithScale(similarityMatrix[+pair[0]][+pair[1]])
+              width: this.roadwithScale(similarityMatrix[+pairArr[0]][+pairArr[1]])
             })
           })
         );

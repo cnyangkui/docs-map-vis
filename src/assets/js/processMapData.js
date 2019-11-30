@@ -1,8 +1,11 @@
-import * as d3 from "d3"
-import _ from "lodash"
-import longdisHighsimilarity from "./dist2similarity.js";
-import Graph from "./dijkstra.js";
-
+// import * as d3 from "d3"
+// import _ from "lodash"
+// import longdisHighsimilarity from "./dist2similarity.js";
+// import Graph from "./dijkstra.js";
+const d3 = require("d3")
+const _ = require("lodash")
+const longdisHighsimilarity = require("./dist2similarity.js");
+const Graph = require("./dijkstra.js");
 /**
  * 获取投影数据的范围
  * @param {Array} projdata [{index: number, text: string, x: number, y: number}, ...]
@@ -358,7 +361,7 @@ function shortestPath(projdata, similarityMatrix, dist_quantile = 0.3, similarit
  * }
  * @returns {Object} {dataExtent: Array, mapExtent: Array, allPoints: Array, pointIndexInfo: Object, polygons: Array, ecoords: Array, ecoords2index: Map, edge2docindex: Map, paths: Array, clusters: Object }
  */
-export default function processMapData(projdata, similarityMatrix, clusterdata, config) {
+function processMapData(projdata, similarityMatrix, clusterdata, config) {
   let { dataExtent, mapExtent } = getExtent(projdata);
   let outerPoints = generateOuterPoints(dataExtent, mapExtent, config.outerPointNum);
   let innerPoints = generateInnerPoints(projdata, dataExtent, config.innerXNum, config.innerYNum);
@@ -375,3 +378,6 @@ export default function processMapData(projdata, similarityMatrix, clusterdata, 
   let paths = shortestPath(projdata, similarityMatrix, config.dist_quantile, config.similarity_threshold, graphdata, polygons, ecoords, ecoords2index);
   return { dataExtent, mapExtent, allPoints, pointIndexInfo, polygons, ecoords, ecoords2index, edge2docindex, paths, clusters }
 }
+
+// export default processMapData;
+module.exports = processMapData;

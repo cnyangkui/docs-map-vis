@@ -6,6 +6,7 @@ const similarityMatrix = require("../../../public/data/output/thucnews/similarit
 const cluserdata = require("../../../public/data/output/thucnews/cluster.json")
 const longdisHighsimilarity = require("./dist2similarity.js");
 const Graph = require("./dijkstra.js");
+// const processMapData = require("./processMapData.js")
 
 /**
  * 获取投影数据的范围
@@ -163,12 +164,12 @@ function getVoronoi(mapExtent, allPoints, mapIterationNum) {
  * 为所有多边形边上的点
  * @param {Array} polygons 数组中每个元素是一个多边形，表现为一系列坐标的集合
  * @param {Object} pointIndexInfo {dataPoint: [0, a], outerPoint: [a, b], innerPoint: [b, c]}
- * @returns {Object} {ecoords:Array, ecoords2index: Map, edge2docindex: Map}. ecoords存储多边形上的顶点坐标, ecoords2index存储 <多边形顶点坐标, 顶点索引> 的映射, edges存储 <边,共边多边形索引> 的映射.
+ * @returns {Object} {ecoords:Array, ecoords2index: Object, edge2docindex: Object}. ecoords存储多边形上的顶点坐标, ecoords2index存储 {多边形顶点坐标: 顶点索引} 的映射, edges存储 {边: 共边多边形索引} 的映射.
  */
 function getAllEdges(polygons, pointIndexInfo) {
-  let ecoords2index = new Map();
+  let ecoords2index = {};
   let ecoords = [];
-  let edge2docindex = new Map();
+  let edge2docindex = {};
   let p_index = 0;
   // 构建多边形边上点的坐标与索引的互相映射
   for (let pi in polygons) {
@@ -176,7 +177,7 @@ function getAllEdges(polygons, pointIndexInfo) {
       continue;
     }
     polygons[pi].forEach((point) => {
-      ecoords2index.set(JSON.stringify(point), p_index);
+      ecoords2index[JSON.stringify(point)] = p_index;
       ecoords[p_index] = point;
       p_index++;
     });
@@ -190,23 +191,23 @@ function getAllEdges(polygons, pointIndexInfo) {
     for (let i = 0, len = pg.length - 1; i < len; i++) {
       let p1 = pg[i]; // 多边形上的节点
       let p2 = pg[i + 1]; // 多边形上的节点
-      let i1 = ecoords2index.get(JSON.stringify(p1));
-      let i2 = ecoords2index.get(JSON.stringify(p2));
+      let i1 = ecoords2index[JSON.stringify(p1)];
+      let i2 = ecoords2index[JSON.stringify(p2)];
       let edge1 = i1 + "-" + i2;
       let edge2 = i2 + "-" + i1;
-      if (edge2docindex.has(edge1)) {
-        let value = edge2docindex.get(edge1);
+      if (edge1 in edge2docindex) {
+        let value = edge2docindex[edge1];
         value.push(pi);
-        edge2docindex.set(edge1, value);
+        edge2docindex[edge1] = value;
       } else {
-        edge2docindex.set(edge1, [pi]);
+        edge2docindex[edge1] = [pi];
       }
-      if (edge2docindex.has(edge2)) {
-        let value = edge2docindex.get(edge2);
+      if (edge2 in edge2docindex) {
+        let value = edge2docindex[edge2];
         value.push(pi);
-        edge2docindex.set(edge2, value);
+        edge2docindex[edge2] = value;
       } else {
-        edge2docindex.set(edge2, [pi]);
+        edge2docindex[edge2] = [pi];
       }
     }
   };
@@ -220,15 +221,16 @@ function getAllEdges(polygons, pointIndexInfo) {
 /**
  * 获得图结构数据
  * @param {Array} similarityMatrix 二维数组, 存储所有文档对的相似度 
- * @param {Map} edge2docindex <边, 共边多边形的索引> 
+ * @param {Object} edge2docindex {边: 共边多边形的索引>}
  * @param {Array} ecoords 数组每一个元素是多边形的一个顶点坐标 
  * @param {Object} pointIndexInfo {dataPoint: [0, a], outerPoint: [a, b], innerPoint: [b, c]}
- * @returns {Map} 表现为 <source1, {target1: weight1, target2: weight2}>
+ * @returns {Object} 表现为 {source1: {target1: weight1, target2: weight2}}
  */
 function getGraphData(similarityMatrix, edge2docindex, ecoords, pointIndexInfo) {
   // 多边形每条边距离的归一化
   let weightlist = [];
-  for (let [edge, docindex] of edge2docindex) {
+  for (let edge in edge2docindex) {
+    let docindex = edge2docindex[edge];
     let [p1, p2] = edge.split("-");
     let weight = 0;
     if (docindex.length == 2) {
@@ -244,8 +246,9 @@ function getGraphData(similarityMatrix, edge2docindex, ecoords, pointIndexInfo) 
     .domain([0, max])
     .range([0, 1]);
   // 计算多边形每条边上的权值，根据文档相似度赋予，从而构造图数据
-  let graphdata = new Map();
-  for (let [edge, docindex] of edge2docindex) {
+  let graphdata = {};
+  for (let edge in edge2docindex) {
+    let docindex = edge2docindex[edge];
     let [p1, p2] = edge.split("-");
     let weight = 0;
     if (docindex.length == 2) {
@@ -263,15 +266,15 @@ function getGraphData(similarityMatrix, edge2docindex, ecoords, pointIndexInfo) 
     } else if (docindex.length == 1) {
       weight = 1 / 0;
     }
-    if (graphdata.has(p1)) {
+    if (p1 in graphdata) {
       // 图数据中是否有起点为p1的数据
-      let target = graphdata.get(p1); //起点为p1的数据的终点
+      let target = graphdata[p1]; //起点为p1的数据的终点
       target[p2] = weight; // 加入一个新的终点
-      graphdata.set(p1, target);
+      graphdata[p1] = target;
     } else {
       let target = {};
       target[p2] = weight;
-      graphdata.set(p1, target);
+      graphdata[p1] = target;
     }
   }
   return graphdata;
@@ -298,18 +301,18 @@ function getCluster(clusterdata) {
  * @param {Array} similarityMatrix 二维数组, 存储所有文档对的相似度 
  * @param {number} dist_quantile 距离分位数阈值, 过滤获得距离大于该分位数的文档对
  * @param {number} similarity_threshold 相似度阈值, 过滤获得相似度大于该值的文档对
- * @param {Map} graphdata 图结构数据, 表现为 <source1, {target1: weight1, target2: weight2}>
+ * @param {Object} graphdata 图结构数据, 表现为 {source1: {target1: weight1, target2: weight2}}
  * @param {Array} polygons 数组中每个元素是一个多边形，表现为一系列坐标的集合
  * @param {Array} ecoords 存储多边形上的顶点坐标
- * @param {Map} ecoords2index 存储 <多边形顶点坐标, 顶点索引> 的映射
- * @returns {Map} <pair, path> pair是一个文档索引对，paths是一个数组，表示一条路劲，每一条路径是一组坐标的集合
+ * @param {Object} ecoords2index 存储 {多边形顶点坐标: 顶点索引} 的映射
+ * @returns {Object} {pair: path} pair是一个文档索引对，paths是一个数组，表示一条路劲，每一条路径是一组坐标的集合
  */
 function shortestPath(projdata, similarityMatrix, dist_quantile = 0.3, similarity_threshold = 0.2, graphdata, polygons, ecoords, ecoords2index) {
   // 构造Graph
   let graph = new Graph();
-  let paths = new Map();
-  for (let [key, value] of graphdata) {
-    graph.addVertex(key, value);
+  let paths = {};
+  for (let key in graphdata) {
+    graph.addVertex(key, graphdata[key]);
   }
   longdisHighsimilarity(projdata, similarityMatrix, dist_quantile, similarity_threshold).forEach(d => {
     let pair = d.pair.split("-");
@@ -330,8 +333,8 @@ function shortestPath(projdata, similarityMatrix, dist_quantile = 0.3, similarit
         }
       }
     }
-    let startIndex = ecoords2index.get(JSON.stringify(start));
-    let endIndex = ecoords2index.get(JSON.stringify(end));
+    let startIndex = ecoords2index[JSON.stringify(start)];
+    let endIndex = ecoords2index[JSON.stringify(end)];
     let pathstr = graph
       .shortestPath(startIndex + "", endIndex + "")
       .concat([startIndex + ""])
@@ -342,7 +345,7 @@ function shortestPath(projdata, similarityMatrix, dist_quantile = 0.3, similarit
       pathcoords.push(ecoords[parseInt(pid)]);
     });
     pathcoords.push(pg2.data);
-    paths.set(pair, pathcoords)
+    paths[d.pair] = pathcoords;
   })
   return paths;
 }
@@ -360,7 +363,7 @@ function shortestPath(projdata, similarityMatrix, dist_quantile = 0.3, similarit
  *  dist_quantile: number 距离分位数
  *  similarity_threshold: number 相似度阈值
  * }
- * @returns {Object} {dataExtent: Array, mapExtent: Array, allPoints: Array, pointIndexInfo: Object, polygons: Array, ecoords: Array, ecoords2index: Map, edge2docindex: Map, paths: Array, clusters: Object }
+ * @returns {Object} {dataExtent: Array, mapExtent: Array, allPoints: Array, pointIndexInfo: Object, polygons: Array, finalPoints: Array, ecoords: Array, ecoords2index: Object, edge2docindex: Object, paths: Array, clusters: Object }
  */
 function processMapData(projdata, similarityMatrix, clusterdata, config) {
   let { dataExtent, mapExtent } = getExtent(projdata);
@@ -373,11 +376,12 @@ function processMapData(projdata, similarityMatrix, clusterdata, config) {
     innerPoint: [projdata.length + outerPoints.length, allPoints.length]
   };
   let polygons = getVoronoi(mapExtent, allPoints, config.mapIterationNum);
+  let finalPoints = polygons.map(d => d.data)
   let clusters = getCluster(clusterdata);
   let { ecoords, ecoords2index, edge2docindex } = getAllEdges(polygons, pointIndexInfo);
   let graphdata = getGraphData(similarityMatrix, edge2docindex, ecoords, pointIndexInfo)
   let paths = shortestPath(projdata, similarityMatrix, config.dist_quantile, config.similarity_threshold, graphdata, polygons, ecoords, ecoords2index);
-  return { dataExtent, mapExtent, allPoints, pointIndexInfo, polygons, ecoords, ecoords2index, edge2docindex, paths, clusters }
+  return { dataExtent, mapExtent, allPoints, pointIndexInfo, polygons, finalPoints, ecoords, ecoords2index, edge2docindex, paths, clusters }
 }
 
 let config= {
