@@ -44,6 +44,10 @@
       </div>
       <div class="item">
         <a href="/map"><img src="/images/8.jpg"/></a>
+        <p>Comparing of Voronoi</p>
+      </div>
+      <div class="item">
+        <a href="/map"><img src="/images/9.jpg"/></a>
         <p>Map</p>
       </div>
     </div>
@@ -88,7 +92,7 @@ h1 {
 }
 .item img {
   width: 100%;
-  margin-bottom: 10px;
+  margin-bottom: 5px;
   cursor: pointer;
 }
 </style>
