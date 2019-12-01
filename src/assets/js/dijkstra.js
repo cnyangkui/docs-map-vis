@@ -3,39 +3,48 @@
  * this code works with the implementation in google's closure library (https://code.google.com/p/closure-library/).
  * Use goog.require('goog.structs.PriorityQueue'); and new goog.structs.PriorityQueue()
  */
-function PriorityQueue () {
-  this._nodes = [];
+class PriorityQueue {
 
-  this.enqueue = function (priority, key) {
+  constructor() {
+    this._nodes = [];
+  }
+
+  enqueue(priority, key) {
     this._nodes.push({key: key, priority: priority });
     this.sort();
-  };
-  this.dequeue = function () {
+  }
+
+  dequeue() {
     return this._nodes.shift().key;
-  };
-  this.sort = function () {
+  }
+
+  sort() {
     this._nodes.sort(function (a, b) {
       return a.priority - b.priority;
     });
-  };
-  this.isEmpty = function () {
+  }
+
+  isEmpty() {
     return !this._nodes.length;
-  };
+  }
 }
 
 /**
  * Pathfinding starts here
  */
-function Graph(){
-  var INFINITY = 1/0;
-  this.vertices = {};
+class Graph {
 
-  this.addVertex = function(name, edges){
+  constructor() {
+    this.vertices = {};
+    this.INFINITY = 1/0;
+  }
+
+  addVertex(name, edges) {
     this.vertices[name] = edges;
-  };
+  }
 
-  this.shortestPath = function (start, finish) {
-    var nodes = new PriorityQueue(),
+  shortestPath(start, finish) {
+    let nodes = new PriorityQueue(),
         distances = {},
         previous = {},
         path = [],
@@ -47,8 +56,8 @@ function Graph(){
         nodes.enqueue(0, vertex);
       }
       else {
-        distances[vertex] = INFINITY;
-        nodes.enqueue(INFINITY, vertex);
+        distances[vertex] = this.INFINITY;
+        nodes.enqueue(this.INFINITY, vertex);
       }
 
       previous[vertex] = null;
@@ -68,7 +77,7 @@ function Graph(){
         break;
       }
 
-      if(!smallest || distances[smallest] === INFINITY){
+      if(!smallest || distances[smallest] === this.INFINITY){
         continue;
       }
 
@@ -85,14 +94,13 @@ function Graph(){
     }
 
     return path;
-  };
+  }
 }
 
-// export default Graph;
-module.exports = Graph;
+export default Graph;
 
 
-// var g = new Graph();
+// let g = new Graph();
 
 // g.addVertex('A', {B: 7, C: 8});
 // g.addVertex('B', {A: 7, F: 2});
@@ -116,4 +124,4 @@ module.exports = Graph;
 // g.addVertex('8', {'5': 1, '6': 3});
 
 // // Log test, with the addition of reversing the path and prepending the first node so it's more readable
-// console.log(g.shortestPath('1', '8').concat(['1']).reverse());
+// console.log(g.shortestPath('7', '8').concat(['7']).reverse());

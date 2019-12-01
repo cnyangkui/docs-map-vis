@@ -1,12 +1,11 @@
-const fs = require("fs");
-const d3 = require("d3")
-const _ = require("lodash")
-const projdata = require("../../../public/data/output/thucnews/projection_dense_tfidf_thucnews.json");
-const similarityMatrix = require("../../../public/data/output/thucnews/similarity_matrix_thucnews_5round.json");
-const cluserdata = require("../../../public/data/output/thucnews/cluster.json")
-const longdisHighsimilarity = require("./dist2similarity.js");
-const Graph = require("./dijkstra.js");
-// const processMapData = require("./processMapData.js")
+import * as fs from "fs"
+import * as d3 from "d3"
+import _ from "lodash"
+import longdisHighsimilarity from "./dist2similarity.js";
+import Graph from "./dijkstra.js";
+import projdata from "../../../public/data/output/thucnews/projection_dense_tfidf_thucnews.json";
+import similarityMatrix from "../../../public/data/output/thucnews/similarity_matrix_thucnews_5round.json";
+import cluserdata from "../../../public/data/output/thucnews/cluster.json";
 
 /**
  * 获取投影数据的范围
@@ -394,7 +393,6 @@ let config= {
 };
 let generatedData = processMapData(projdata, similarityMatrix, cluserdata, config);
 let writePath = "./public/data/output/thucnews/mapdata.json"
-console.log("开始写入数据......");
 fs.writeFile(writePath, JSON.stringify(generatedData),  function(err) {
   if (err) {
       return console.error(err);

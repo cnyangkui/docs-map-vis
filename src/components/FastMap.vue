@@ -24,31 +24,12 @@ import projdata from "../../public/data/output/thucnews/projection_dense_tfidf_t
 import similarityMatrix from "../../public/data/output/thucnews/similarity_matrix_thucnews_5round.json";
 import cluserdata from "../../public/data/output/thucnews/cluster.json"
 import mapdata from "../../public/data/output/thucnews/mapdata.json";
+// { dataExtent, mapExtent, allPoints, pointIndexInfo, polygons, finalPoints, ecoords, ecoords2index, edge2docindex, paths, clusters }
 export default {
   name: "FastMap",
   data() {
     return {
       map: null,
-      // mapdata: {
-      //   dataExtent: null, //[minx, miny, maxx, maxy]
-      //   mapExtent: null, //[minx, miny, maxx, maxy]
-      //   allPoints: null, 
-      //   pointIndexInfo: null, 
-      //   polygons: null, // Voronoi多边形
-      //   ecoords: null, // 多边形边上顶点的坐标
-      //   ecoords2index: null, // <多边形顶点坐标, 多边形顶点索引>
-      //   edge2docindex: null, // <多边形的边, 共边多边形索引>
-      //   paths: null, 
-      //   clusters: null 
-      // },
-      // config: {
-      //   mapIterationNum: 50,
-      //   outerPointNum: 500,
-      //   innerXNum: 20,
-      //   innerYNum: 20,
-      //   dist_quantile: 0.3, // 计算最短路径时的约束，欧氏距离分位数阈值
-      //   similarity_threshold: 0.2 // 计算最短路径时的约束，相似度阈值
-      // },
       color: null,
       roadwithScale: null
     };

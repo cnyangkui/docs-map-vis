@@ -1,11 +1,8 @@
-// import * as d3 from "d3"
-// import _ from "lodash"
-// import longdisHighsimilarity from "./dist2similarity.js";
-// import Graph from "./dijkstra.js";
-const d3 = require("d3")
-const _ = require("lodash")
-const longdisHighsimilarity = require("./dist2similarity.js");
-const Graph = require("./dijkstra.js");
+import * as d3 from "d3"
+import _ from "lodash"
+import longdisHighsimilarity from "./dist2similarity.js";
+import Graph from "./dijkstra.js";
+
 /**
  * 获取投影数据的范围
  * @param {Array} projdata [{index: number, text: string, x: number, y: number}, ...]
@@ -379,5 +376,4 @@ function processMapData(projdata, similarityMatrix, clusterdata, config) {
   return { dataExtent, mapExtent, allPoints, pointIndexInfo, polygons, ecoords, ecoords2index, edge2docindex, paths, clusters }
 }
 
-// export default processMapData;
-module.exports = processMapData;
+export default processMapData;
