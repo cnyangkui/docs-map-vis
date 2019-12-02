@@ -99,7 +99,6 @@ class Graph {
 
 export default Graph;
 
-
 // let g = new Graph();
 
 // g.addVertex('A', {B: 7, C: 8});
@@ -113,15 +112,3 @@ export default Graph;
 
 // // Log test, with the addition of reversing the path and prepending the first node so it's more readable
 // console.log(g.shortestPath('A', 'H').concat(['A']).reverse());
-
-// g.addVertex('1', {'2': 7, '3': 8});
-// g.addVertex('2', {'1': 7, '6': 2});
-// g.addVertex('3', {'1': 8, '6': 6, '7': 4});
-// g.addVertex('4', {'6': 8});
-// g.addVertex('5', {'8': 1});
-// g.addVertex('6', {'2': 2, '3': 6, '4': 8, '7': 9, '8': 3});
-// g.addVertex('7', {'3': 4, '6': 9});
-// g.addVertex('8', {'5': 1, '6': 3});
-
-// // Log test, with the addition of reversing the path and prepending the first node so it's more readable
-// console.log(g.shortestPath('7', '8').concat(['7']).reverse());
