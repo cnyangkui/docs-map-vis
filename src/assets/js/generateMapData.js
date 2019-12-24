@@ -375,7 +375,7 @@ function processMapData(projdata, similarityMatrix, clusterdata, config) {
     innerPoint: [projdata.length + outerPoints.length, allPoints.length]
   };
   let polygons = getVoronoi(mapExtent, allPoints, config.mapIterationNum);
-  let finalPoints = polygons.map(d => d.data)
+  let finalPoints = polygons.map(d => d3.polygonCentroid(d)); //polygons.map(d => d.data)
   let clusters = getCluster(clusterdata);
   let { ecoords, ecoords2index, edge2docindex } = getAllEdges(polygons, pointIndexInfo);
   let graphdata = getGraphData(similarityMatrix, edge2docindex, ecoords, pointIndexInfo)
@@ -384,7 +384,7 @@ function processMapData(projdata, similarityMatrix, clusterdata, config) {
 }
 
 let config= {
-  mapIterationNum: 50,
+  mapIterationNum: 500,
   outerPointNum: 500,
   innerXNum: 20,
   innerYNum: 20,
