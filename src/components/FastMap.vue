@@ -35,39 +35,39 @@ import similarityMatrix from "../../public/data/output/thucnews/similarity_matri
 import cluserdata from "../../public/data/output/thucnews/cluster.json";
 import mapdata from "../../public/data/output/thucnews/mapdata.json";
 import keywords from "../../public/data/output/thucnews/doc2keyword.json";
-// { dataExtent, mapExtent, allPoints, pointIndexInfo, polygons, finalPoints, ecoords, ecoords2index, edge2docindex, paths, clusters }
+// { dataExtent, mapExtent, pointIndexInfo, polygons, finalPoints, ecoords, edge2docindex, paths, clusters }
 export default {
   name: "FastMap",
   data() {
     return {
       map: null,
+      wordSource: new olsource_Vector(),
       color: null,
       roadwithScale: null
     };
   },
   created: function() {
-    this.$root.eventHub.$on("compareVoronoi", this.compareVoronoi);
+    // this.$root.eventHub.$on("compareVoronoi", this.compareVoronoi);
   },
   beforeDestroy: function() {
-    this.$root.eventHub.$off("compareVoronoi");
+    // this.$root.eventHub.$off("compareVoronoi");
   },
   mounted() {
     this.$nextTick(() => {
       let start = new Date();
       this.processData();
       this.initMap();
-      this.addForce();
-      this.addClickEventOnRoad();
+      this.addWords();
+      // this.addClickEventOnRoad();
       let end = new Date();
       console.log("耗时:", end - start);
     });
   },
   methods: {
     processData() {
-      let instance = this;
       this.color = d3
         .scaleSequential()
-        .domain([0, 0.5])
+        .domain([0, 0.8])
         .interpolator(d3.interpolateYlGn); //interpolateBrBG,interpolateYlGn
       this.roadwithScale = d3
         .scaleLinear()
@@ -90,17 +90,18 @@ export default {
                 layers: [
                   new ollayer_Vector({
                     source: this.addColorLump(),
-                    opacity: 0.3
+                    opacity: 0.5
                   }),
                   new ollayer_Vector({
-                    source: this.addVoronoi()
+                    source: this.addVoronoi(),
+                    opacity: 0.3
                   })
                 ]
               }),
               new ollayer_Vector({
                 title: "Cluster",
                 type: "base",
-                visible: true,
+                visible: false,
                 source: this.addCluster(),
                 opacity: 0.3
               })
@@ -109,40 +110,36 @@ export default {
           new ollayer_Group({
             title: "Overlays",
             layers: [
-              // new ollayer_Vector({
-              //   title: "Road",
-              //   source: this.addRoad()
-              // }),
+              new ollayer_Vector({
+                title: "Road",
+                source: this.addRoad()
+              }),
               new ollayer_Vector({
                 title: "DocPoint",
                 source: this.addDocPoint()
+              }),
+              new ollayer_Vector({
+                title: "Words",
+                source: this.wordSource
               })
-              // new ollayer_Vector({
-              //   title: "Words",
-              //   source: this.addWords()
-              // })
-              // new ollayer_Vector({
-              //   title: "Force",
-              //   source: this.addForce()
-              // })
             ]
           })
         ],
         controls: olcontrol_defaults().extend([
-          new olcontrol_OverviewMap({
-            layers: [
-              new ollayer_Group({
-                layers: [
-                  new ollayer_Vector({
-                    source: this.addColorLump()
-                  }),
-                  new ollayer_Vector({
-                    source: this.addVoronoi()
-                  })
-                ]
-              })
-            ]
-          }),
+          // new olcontrol_OverviewMap({
+          //   layers: [
+          //     new ollayer_Group({
+          //       layers: [
+          //         new ollayer_Vector({
+          //           source: this.addColorLump()
+          //         }),
+          //         new ollayer_Vector({
+          //           source: this.addVoronoi()
+          //         })
+          //       ]
+          //     })
+          //   ]
+          // }),
           new LayerSwitcher({
             tipLabel: "Légende" // Optional label for button
           })
@@ -159,7 +156,12 @@ export default {
     },
     addDocPoint() {
       let vectorSource = new olsource_Vector();
-      for (let i = 0, len = projdata.length; i < len; i++) {
+      for (
+        let i = mapdata.pointIndexInfo.dataPoint[0],
+          len = mapdata.pointIndexInfo.dataPoint[1];
+        i < len;
+        i++
+      ) {
         let feature = new ol_Feature({
           geometry: new olgeom_Point(mapdata.finalPoints[i])
         });
@@ -175,20 +177,41 @@ export default {
       }
       return vectorSource;
     },
+    addBackground() {
+      let vectorSource = new olsource_Vector();
+      let background = new ol_Feature({
+        geometry: new olgeom_Polygon([
+          [
+            [mapdata.mapExtent[0], mapdata.mapExtent[1]],
+            [mapdata.mapExtent[2], mapdata.mapExtent[1]],
+            [mapdata.mapExtent[2], mapdata.mapExtent[3]],
+            [mapdata.mapExtent[0], mapdata.mapExtent[3]],
+            [mapdata.mapExtent[0], mapdata.mapExtent[1]]
+          ]
+        ])
+      });
+      background.setStyle(
+        new olstyle_Style({
+          fill: new olstyle_Fill({
+            color: "rgb(0, 191, 255)"
+          })
+        })
+      );
+      vectorSource.addFeature(background);
+      return vectorSource;
+    },
     addVoronoi() {
       let vectorSource = new olsource_Vector();
       mapdata.polygons.forEach((pg, index) => {
         let feature = new ol_Feature({
           geometry: new olgeom_Polygon([pg])
         });
-        if (index >= projdata.length) {
+        if (index >= mapdata.pointIndexInfo.dataPoint[1]) {
+          //海洋或湖泊
           feature.setStyle(
             new olstyle_Style({
               fill: new olstyle_Fill({
-                color: "rgb(0, 191, 255, 0.3)"
-              }),
-              stroke: new olstyle_Stroke({
-                color: "rgb(0, 0, 0, 0.05)"
+                color: "rgb(0, 191, 255)"
               })
             })
           );
@@ -199,7 +222,7 @@ export default {
                 color: "rgb(255, 255, 255, 0)"
               }),
               stroke: new olstyle_Stroke({
-                color: "rgb(0, 0, 0, 0.05)"
+                color: "rgb(0, 0, 0, 0.3)"
               })
             })
           );
@@ -207,6 +230,25 @@ export default {
         feature.setId("voronoi-" + index);
         vectorSource.addFeature(feature);
       });
+      // mapdata.polygons.forEach((pg, index) => {
+      //   if (index < mapdata.pointIndexInfo.dataPoint[1]) {
+      //     let feature = new ol_Feature({
+      //       geometry: new olgeom_Polygon([pg])
+      //     });
+      //     feature.setStyle(
+      //       new olstyle_Style({
+      //         fill: new olstyle_Fill({
+      //           color: "rgb(255, 255, 255, 0)"
+      //         }),
+      //         stroke: new olstyle_Stroke({
+      //           color: "rgb(0, 0, 0, 0.05)"
+      //         })
+      //       })
+      //     );
+      //     feature.setId("voronoi-" + index);
+      //     vectorSource.addFeature(feature);
+      //   }
+      // });
       return vectorSource;
     },
     addCluster() {
@@ -220,7 +262,7 @@ export default {
         let feature = new ol_Feature({
           geometry: new olgeom_Polygon([pg])
         });
-        if (index >= projdata.length) {
+        if (index >= mapdata.pointIndexInfo.dataPoint[1]) {
           feature.setStyle(
             new olstyle_Style({
               fill: new olstyle_Fill({
@@ -259,7 +301,10 @@ export default {
         p1 = parseInt(p1);
         p2 = parseInt(p2);
         if (docindex.length == 2) {
-          if (docindex[0] < projdata.length && docindex[1] < projdata.length) {
+          if (
+            docindex[0] < mapdata.pointIndexInfo.dataPoint[1] &&
+            docindex[1] < mapdata.pointIndexInfo.dataPoint[1]
+          ) {
             pg = [
               mapdata.ecoords[p1],
               mapdata.finalPoints[docindex[0]],
@@ -271,8 +316,8 @@ export default {
           } else {
             // 有一个多边形表示海洋或湖泊
             if (
-              docindex[0] < projdata.length &&
-              docindex[1] >= projdata.length
+              docindex[0] < mapdata.pointIndexInfo.dataPoint[1] &&
+              docindex[1] >= mapdata.pointIndexInfo.dataPoint[1]
             ) {
               pg = [
                 mapdata.ecoords[p1],
@@ -282,8 +327,8 @@ export default {
               ];
               weight = 0;
             } else if (
-              docindex[1] < projdata.length &&
-              docindex[0] >= projdata.length
+              docindex[1] < mapdata.pointIndexInfo.dataPoint[1] &&
+              docindex[0] >= mapdata.pointIndexInfo.dataPoint[1]
             ) {
               pg = [
                 mapdata.ecoords[p1],
@@ -295,7 +340,7 @@ export default {
             }
           }
         } else if (docindex.length == 1) {
-          if (docindex[0] < projdata.length) {
+          if (docindex[0] < mapdata.pointIndexInfo.dataPoint[1]) {
             pg = [
               mapdata.ecoords[p1],
               mapdata.finalPoints[docindex[0]],
@@ -490,7 +535,7 @@ export default {
         instance.map.addLayer(layer);
       });
     },
-    addForce2() {
+    addWords() {
       let instance = this;
       let domain = mapdata.pointIndexInfo.dataPoint;
       let nodes = [];
@@ -505,7 +550,7 @@ export default {
       }
       let keywordSet = new Set();
       Object.keys(keywords).forEach(key => {
-        for (let i = 0; i < 2; i++) {
+        for (let i = 0; i < 1; i++) {
           keywordSet.add(keywords[key][i]);
         }
       });
@@ -523,7 +568,7 @@ export default {
       });
       nodes = nodes.concat(tagArr);
       Object.keys(keywords).forEach(key => {
-        for (let i = 0; i < 2; i++) {
+        for (let i = 0; i < 1; i++) {
           links.push({ source: +key, target: keyword2index[keywords[key][i]] });
         }
       });
@@ -533,7 +578,7 @@ export default {
       let force = d3
         .forceSimulation()
         .force("charge", d3.forceManyBody().distanceMax(0.5))
-        // .force("center",d3.forceCenter(width/2,height/2))
+        .alphaMin(0.01)
         .on("tick", tick);
 
       force
@@ -627,17 +672,18 @@ export default {
         const fontname = "Microsoft YaHei";
         const fontsize = "10px";
         let tagNodes = nodes.filter(d => d.category === "tag");
-        for(let i=0; i<tagNodes.length; i++) {
+        for (let i = 0; i < tagNodes.length; i++) {
           let pixelWidth = instance.getWidthOfText(
             tagNodes[i].word,
             fontname,
             fontsize
           );
-          let extent = instance.map.getView().calculateExtent([pixelWidth, ~~fontsize.split('px')[0]]);
+          let extent = instance.map
+            .getView()
+            .calculateExtent([pixelWidth, ~~fontsize.split("px")[0]]);
           tagNodes[i].width = extent[2] - extent[0];
           tagNodes[i].height = extent[3] - extent[1];
         }
-        console.log(tagNodes)
         let tagnode = d3
           .selectAll(".tagnode")
           .data(tagNodes)
@@ -647,6 +693,7 @@ export default {
         let force2 = d3
           .forceSimulation(nodes)
           .force("charge", d3.forceManyBody().strength(0))
+          .alphaMin(0.1)
           .on("tick", function() {
             console.log("tick2");
             let q = d3
@@ -669,11 +716,10 @@ export default {
               });
           });
         force2.on("end", function() {
-          let vectorSource = new olsource_Vector();
           tagnode.each(function(d, i) {
             if (d.category === "tag") {
               let feature = new ol_Feature({
-                geometry: new olgeom_Point([d.x, d.y])
+                geometry: new olgeom_Point([d.x-d.width/2, d.y-d.height/2])
               });
               feature.setStyle(
                 new olstyle_Style({
@@ -686,14 +732,9 @@ export default {
                   })
                 })
               );
-              vectorSource.addFeature(feature);
+              instance.wordSource.addFeature(feature);
             }
           });
-          let layer = new ollayer_Vector({
-            title: "Force",
-            source: vectorSource
-          });
-          instance.map.addLayer(layer);
         });
       });
     },
@@ -703,40 +744,12 @@ export default {
       ctx.font = fontsize + " " + fontname;
       return ctx.measureText(txt).width;
     },
-    addWords() {
-      let vectorSource = new olsource_Vector();
-      let a = 5,
-        b = 1;
-      for (let i = 0; i < 100; i++) {
-        // let x = _.random(this.mapExtent[0], this.mapExtent[2]);
-        // let y = _.random(this.mapExtent[1], this.mapExtent[3]);
-        let j = i / 10;
-        let x = (a + b * j) * Math.cos(j);
-        let y = (a + b * j) * Math.sin(j);
-        let feature = new ol_Feature({
-          geometry: new olgeom_Point([x, y]) //在中心位置实例化一个要素，设置要素的样式
-        });
-
-        feature.setStyle(
-          new olstyle_Style({
-            text: new olstyle_Text({
-              font: "15px Microsoft YaHei",
-              text: "hello",
-              fill: new olstyle_Fill({
-                color: "#222"
-              })
-            })
-          })
-        );
-        vectorSource.addFeature(feature);
-      }
-      return vectorSource;
-    },
     addClickEventOnRoad() {
       let selectSingleClick = new olinteraction_Select();
       let instance = this;
       selectSingleClick.on("select", function(e) {
         e.selected.forEach(feature => {
+          console.log(feature);
           let index = feature.getId().split("-")[1];
           let text = projdata[+index];
           let kw = keywords[+index];
@@ -746,18 +759,6 @@ export default {
         });
       });
       this.map.addInteraction(selectSingleClick);
-    },
-    compareVoronoi(featureId) {
-      let source = this.layers.voronoiLayer.getSource();
-      let feature = source.getFeatureById(featureId);
-      feature.setStyle(
-        new olstyle_Style({
-          stroke: new olstyle_Stroke({
-            color: "steelblue",
-            width: 2
-          })
-        })
-      );
     }
   }
 };

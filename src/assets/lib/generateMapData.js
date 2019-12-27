@@ -163,7 +163,7 @@ function getVoronoi(mapExtent, allPoints, mapIterationNum) {
  * 为所有多边形边上的点
  * @param {Array} polygons 数组中每个元素是一个多边形，表现为一系列坐标的集合
  * @param {Object} pointIndexInfo {dataPoint: [0, a], outerPoint: [a, b], innerPoint: [b, c]}
- * @returns {Object} {ecoords:Array, ecoords2index: Object, edge2docindex: Object}. ecoords存储多边形上的顶点坐标, ecoords2index存储 {多边形顶点坐标: 顶点索引} 的映射, edges存储 {边: 共边多边形索引} 的映射.
+ * @returns {Object} {ecoords:Array, ecoords2index: Object, edge2docindex: Object}. ecoords存储多边形上的顶点坐标, ecoords2index存储 {多边形顶点坐标: 顶点索引} 的映射, edge2docindex存储 {边: 共边多边形索引} 的映射.
  */
 function getAllEdges(polygons, pointIndexInfo) {
   let ecoords2index = {};
@@ -362,7 +362,7 @@ function shortestPath(projdata, similarityMatrix, dist_quantile = 0.3, similarit
  *  dist_quantile: number 距离分位数
  *  similarity_threshold: number 相似度阈值
  * }
- * @returns {Object} {dataExtent: Array, mapExtent: Array, allPoints: Array, pointIndexInfo: Object, polygons: Array, finalPoints: Array, ecoords: Array, ecoords2index: Object, edge2docindex: Object, paths: Array, clusters: Object }
+ * @returns {Object} {dataExtent: Array, mapExtent: Array, pointIndexInfo: Object, polygons: Array, finalPoints: Array, ecoords: Array, ecoords2index: Object, edge2docindex: Object, paths: Array, clusters: Object }
  */
 function processMapData(projdata, similarityMatrix, clusterdata, config) {
   let { dataExtent, mapExtent } = getExtent(projdata);
@@ -380,11 +380,11 @@ function processMapData(projdata, similarityMatrix, clusterdata, config) {
   let { ecoords, ecoords2index, edge2docindex } = getAllEdges(polygons, pointIndexInfo);
   let graphdata = getGraphData(similarityMatrix, edge2docindex, ecoords, pointIndexInfo)
   let paths = shortestPath(projdata, similarityMatrix, config.dist_quantile, config.similarity_threshold, graphdata, polygons, ecoords, ecoords2index);
-  return { dataExtent, mapExtent, allPoints, pointIndexInfo, polygons, finalPoints, ecoords, ecoords2index, edge2docindex, paths, clusters }
+  return { dataExtent, mapExtent, pointIndexInfo, polygons, finalPoints, ecoords, edge2docindex, paths, clusters }
 }
 
 let config= {
-  mapIterationNum: 50,
+  mapIterationNum: 500,
   outerPointNum: 500,
   innerXNum: 20,
   innerYNum: 20,
