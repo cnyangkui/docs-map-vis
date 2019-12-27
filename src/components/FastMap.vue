@@ -42,6 +42,9 @@ export default {
     return {
       map: null,
       wordSource: new olsource_Vector(),
+      firstForceSimulation: null,
+      secondForceSimulation: null,
+      zoom: 1,
       color: null,
       roadwithScale: null
     };
@@ -116,6 +119,7 @@ export default {
               }),
               new ollayer_Vector({
                 title: "DocPoint",
+                visible: false,
                 source: this.addDocPoint()
               }),
               new ollayer_Vector({
@@ -141,7 +145,7 @@ export default {
           //   ]
           // }),
           new LayerSwitcher({
-            tipLabel: "Légende" // Optional label for button
+            tipLabel: "LayerSwitcher" // Optional label for button
           })
         ]),
         view: new ol_View({
@@ -152,6 +156,10 @@ export default {
           center: olextent_getCenter(mapdata.mapExtent),
           zoom: 1
         })
+      });
+      let instance = this;
+      this.map.on("moveend", function(e) {
+        instance.zoom = instance.map.getView().getZoom(); //获取当前地图的缩放级别
       });
     },
     addDocPoint() {
@@ -389,152 +397,7 @@ export default {
       }
       return vectorSource;
     },
-    addForce() {
-      let instance = this;
-      let domain = mapdata.pointIndexInfo.dataPoint;
-      let nodes = [];
-      let links = [];
-      for (let i = domain[0]; i < domain[1]; i++) {
-        nodes.push({
-          id: i,
-          category: "point",
-          x: mapdata.finalPoints[i][0],
-          y: mapdata.finalPoints[i][1]
-        });
-      }
-      let keywordSet = new Set();
-      Object.keys(keywords).forEach(key => {
-        // keywords[key].forEach(value => {
-        //   keywordSet.add(value);
-        // })
-        for (let i = 0; i < 2; i++) {
-          keywordSet.add(keywords[key][i]);
-        }
-      });
-      let keywordArr = Array.from(keywordSet);
-      let keyword2index = {};
-      keywordArr.forEach((d, i) => {
-        keyword2index[d] = domain[1] + i;
-      });
-      let tagArr = keywordArr.map((d, i) => {
-        let obj = {};
-        obj["id"] = domain[1] + i;
-        obj["category"] = "tag";
-        obj["word"] = d;
-        return obj;
-      });
-      nodes = nodes.concat(tagArr);
-      Object.keys(keywords).forEach(key => {
-        // keywords[key].forEach(value => {
-        //   links.push({ source: +key, target: keyword2index[value] });
-        // })
-        for (let i = 0; i < 2; i++) {
-          links.push({ source: +key, target: keyword2index[keywords[key][i]] });
-        }
-      });
-      let nodesCopy = _.cloneDeep(nodes);
-      // let nodesCopy = JSON.parse(JSON.stringify(nodes));
-
-      let graph = { nodes: nodes, links: links };
-      console.log(graph);
-      let force = d3
-        .forceSimulation()
-        .force("charge", d3.forceManyBody().distanceMax(0.5))
-        // .force("center",d3.forceCenter(width/2,height/2))
-        .on("tick", tick);
-
-      force
-        .nodes(graph.nodes)
-        .force("link", d3.forceLink(graph.links).distance(1));
-
-      let link = d3
-        .selectAll(".link")
-        .data(graph.links)
-        .enter()
-        .append("line")
-        .attr("class", "link");
-      let node = d3
-        .selectAll(".node")
-        .data(graph.nodes)
-        .enter()
-        .append("circle")
-        .attr("class", "node");
-
-      function tick() {
-        console.log("tick");
-        node
-          .attr("cx", function(d) {
-            if (d.category === "point") {
-              d.fx = nodesCopy[d.id].x;
-            }
-            return d.x;
-          })
-          .attr("cy", function(d) {
-            if (d.category === "point") {
-              d.fy = nodesCopy[d.id].y;
-            }
-            return d.y;
-          });
-        link
-          .attr("x1", function(d) {
-            return d.source.x;
-          })
-          .attr("y1", function(d) {
-            return d.source.y;
-          })
-          .attr("x2", function(d) {
-            return d.target.x;
-          })
-          .attr("y2", function(d) {
-            return d.target.y;
-          });
-      }
-
-      force.on("end", function() {
-        console.log("end...");
-        let vectorSource = new olsource_Vector();
-        node.each(function(d, i) {
-          if (d.category === "tag") {
-            let feature = new ol_Feature({
-              geometry: new olgeom_Point([d.x, d.y])
-            });
-            feature.setStyle(
-              new olstyle_Style({
-                text: new olstyle_Text({
-                  font: "10px Microsoft YaHei",
-                  text: d.word,
-                  fill: new olstyle_Fill({
-                    color: "#222"
-                  })
-                })
-              })
-            );
-            vectorSource.addFeature(feature);
-          }
-        });
-        link.each(function(d) {
-          let feature = new ol_Feature({
-            geometry: new olgeom_LineString([
-              [d.source.x, d.source.y],
-              [d.target.x, d.target.y]
-            ])
-          });
-          feature.setStyle(
-            new olstyle_Style({
-              stroke: new olstyle_Stroke({
-                color: "rgb(255, 0, 0, 0.1)"
-              })
-            })
-          );
-          vectorSource.addFeature(feature);
-        });
-        let layer = new ollayer_Vector({
-          title: "Force",
-          source: vectorSource
-        });
-        instance.map.addLayer(layer);
-      });
-    },
+    addWordsOverview() {},
     addWords() {
       let instance = this;
       let domain = mapdata.pointIndexInfo.dataPoint;
@@ -548,42 +411,60 @@ export default {
           y: mapdata.finalPoints[i][1]
         });
       }
-      let keywordSet = new Set();
+      let keywordArr = [];
+      let count = 0;
       Object.keys(keywords).forEach(key => {
         for (let i = 0; i < 1; i++) {
-          keywordSet.add(keywords[key][i]);
+          // keywordArr.push(keywords[key][i]);
+          keywordArr.push({
+            id: domain[1] + count,
+            category: "tag",
+            word: keywords[key][i]
+          });
+          links.push({ source: +key, target: domain[1] + count });
+          count++;
         }
       });
-      let keywordArr = Array.from(keywordSet);
-      let keyword2index = {};
-      keywordArr.forEach((d, i) => {
-        keyword2index[d] = domain[1] + i;
-      });
-      let tagArr = keywordArr.map((d, i) => {
-        let obj = {};
-        obj["id"] = domain[1] + i;
-        obj["category"] = "tag";
-        obj["word"] = d;
-        return obj;
-      });
-      nodes = nodes.concat(tagArr);
-      Object.keys(keywords).forEach(key => {
-        for (let i = 0; i < 1; i++) {
-          links.push({ source: +key, target: keyword2index[keywords[key][i]] });
-        }
-      });
-      let nodesCopy = _.cloneDeep(nodes);
+      nodes = nodes.concat(keywordArr);
+
+      // let keywordArr = Array.from(keywordSet);
+      // let keyword2index = {};
+      // keywordArr.forEach((d, i) => {
+      //   keyword2index[d] = domain[1] + i;
+      // });
+      // let tagArr = keywordArr.map((d, i) => {
+      //   let obj = {};
+      //   obj["id"] = domain[1] + i;
+      //   obj["category"] = "tag";
+      //   obj["word"] = d;
+      //   return obj;
+      // });
+      // nodes = nodes.concat(tagArr);
+      // Object.keys(keywords).forEach(key => {
+      //   for (let i = 0; i < 1; i++) {
+      //     links.push({ source: +key, target: keyword2index[keywords[key][i]] });
+      //   }
+      // });
 
       let graph = { nodes: nodes, links: links };
-      let force = d3
-        .forceSimulation()
+      this.taglayout(graph);
+    },
+    getWidthOfText(txt, fontname, fontsize) {
+      let canvas = document.createElement("canvas");
+      let ctx = canvas.getContext("2d");
+      ctx.font = fontsize + " " + fontname;
+      return ctx.measureText(txt).width;
+    },
+    taglayout(graph) {
+      let instance = this;
+      let nodesCopy = _.cloneDeep(graph.nodes);
+
+      instance.firstForceSimulation = d3
+        .forceSimulation(graph.nodes)
         .force("charge", d3.forceManyBody().distanceMax(0.5))
+        .force("link", d3.forceLink(graph.links).distance(1))
         .alphaMin(0.01)
         .on("tick", tick);
-
-      force
-        .nodes(graph.nodes)
-        .force("link", d3.forceLink(graph.links).distance(1));
 
       let link = d3
         .selectAll(".link")
@@ -591,6 +472,7 @@ export default {
         .enter()
         .append("line")
         .attr("class", "link");
+
       let node = d3
         .selectAll(".node")
         .data(graph.nodes)
@@ -599,7 +481,6 @@ export default {
         .attr("class", "node");
 
       function tick() {
-        console.log("tick");
         node
           .attr("cx", function(d) {
             if (d.category === "point") {
@@ -628,50 +509,12 @@ export default {
           });
       }
 
-      function collide(node) {
-        return function(quad, x1, y1, x2, y2) {
-          var updated = false;
-          if (quad.data && quad.data !== node) {
-            var x = node.x - quad.data.x,
-              y = node.y - quad.data.y,
-              xSpacing = (quad.data.width + node.width) / 2,
-              ySpacing = (quad.data.height + node.height) / 2,
-              absX = Math.abs(x),
-              absY = Math.abs(y),
-              l,
-              lx,
-              ly;
-
-            if (absX < xSpacing && absY < ySpacing) {
-              l = Math.sqrt(x * x + y * y);
-
-              lx = (absX - xSpacing) / l;
-              ly = (absY - ySpacing) / l;
-
-              // the one that's barely within the bounds probably triggered the collision
-              if (Math.abs(lx) > Math.abs(ly)) {
-                lx = 0;
-              } else {
-                ly = 0;
-              }
-
-              node.x -= x *= lx;
-              node.y -= y *= ly;
-              quad.data.x += x;
-              quad.data.y += y;
-
-              updated = true;
-            }
-          }
-          return updated;
-        };
-      }
-
-      force.on("end", function() {
+      instance.firstForceSimulation.on("end", function() {
         console.log("end...");
         const fontname = "Microsoft YaHei";
         const fontsize = "10px";
-        let tagNodes = nodes.filter(d => d.category === "tag");
+        let tagNodes = graph.nodes.filter(d => d.category === "tag");
+
         for (let i = 0; i < tagNodes.length; i++) {
           let pixelWidth = instance.getWidthOfText(
             tagNodes[i].word,
@@ -684,14 +527,16 @@ export default {
           tagNodes[i].width = extent[2] - extent[0];
           tagNodes[i].height = extent[3] - extent[1];
         }
+
         let tagnode = d3
           .selectAll(".tagnode")
           .data(tagNodes)
           .enter()
           .append("circle")
           .attr("class", "tagnode");
-        let force2 = d3
-          .forceSimulation(nodes)
+
+        instance.secondForceSimulation = d3
+          .forceSimulation(tagnode)
           .force("charge", d3.forceManyBody().strength(0))
           .alphaMin(0.1)
           .on("tick", function() {
@@ -715,11 +560,57 @@ export default {
                 return d.y;
               });
           });
-        force2.on("end", function() {
+
+        function collide(node) {
+          return function(quad, x1, y1, x2, y2) {
+            var updated = false;
+            if (quad.data && quad.data !== node) {
+              var x = node.x - quad.data.x,
+                y = node.y - quad.data.y,
+                xSpacing = (quad.data.width + node.width) / 2,
+                ySpacing = (quad.data.height + node.height) / 2,
+                absX = Math.abs(x),
+                absY = Math.abs(y),
+                l,
+                lx,
+                ly;
+
+              if (absX < xSpacing && absY < ySpacing) {
+                l = Math.sqrt(x * x + y * y);
+
+                lx = (absX - xSpacing) / l;
+                ly = (absY - ySpacing) / l;
+
+                // the one that's barely within the bounds probably triggered the collision
+                if (Math.abs(lx) > Math.abs(ly)) {
+                  lx = 0;
+                } else {
+                  ly = 0;
+                }
+
+                node.x -= x *= lx;
+                node.y -= y *= ly;
+                quad.data.x += x;
+                quad.data.y += y;
+
+                updated = true;
+              }
+            }
+            return updated;
+          };
+        }
+
+        instance.secondForceSimulation.on("end", function() {
+          if (instance.wordSource.getFeatures().length > 0) {
+            instance.wordSource.clear();
+          }
           tagnode.each(function(d, i) {
             if (d.category === "tag") {
               let feature = new ol_Feature({
-                geometry: new olgeom_Point([d.x-d.width/2, d.y-d.height/2])
+                geometry: new olgeom_Point([
+                  d.x - d.width / 2,
+                  d.y - d.height / 2
+                ])
               });
               feature.setStyle(
                 new olstyle_Style({
@@ -735,14 +626,9 @@ export default {
               instance.wordSource.addFeature(feature);
             }
           });
+          console.log(instance.wordSource.getFeatures().length);
         });
       });
-    },
-    getWidthOfText(txt, fontname, fontsize) {
-      let canvas = document.createElement("canvas");
-      let ctx = canvas.getContext("2d");
-      ctx.font = fontsize + " " + fontname;
-      return ctx.measureText(txt).width;
     },
     addClickEventOnRoad() {
       let selectSingleClick = new olinteraction_Select();
@@ -760,7 +646,15 @@ export default {
       });
       this.map.addInteraction(selectSingleClick);
     }
-  }
+  },
+  // watch: {
+  //   zoom(n, o) {
+  //     console.log("zoom ", n);
+  //     this.firstForceSimulation.stop();
+  //     this.secondForceSimulation.stop();
+  //     this.addWords();
+  //   }
+  // }
 };
 </script>
 

@@ -188,21 +188,15 @@ export default {
         let j = i / 10 / this.zoom;
         let x = (a + b * j) * Math.cos(j);
         let y = (a + b * j) * Math.sin(j);
-        let rectInfo = this.getPosAndWH(
-          "helloworld",
-          x,
-          y,
-          fontname,
-          fontsize
-        );
+        let rectInfo = this.getPosAndWH("helloworld", x, y, fontname, fontsize);
         let feature3 = new ol.Feature({
-          geometry: new olgeom.Point([x,y])
+          geometry: new olgeom.Point([x, y])
         });
         feature3.setStyle(
           new olstyle.Style({
             image: new olstyle.Circle({
               radius: 5,
-              fill: new olstyle.Fill({ color: 'red' })
+              fill: new olstyle.Fill({ color: "red" })
             })
           })
         );
@@ -223,7 +217,7 @@ export default {
         feature.setStyle(
           new olstyle.Style({
             text: new olstyle.Text({
-              font: fontsize + ' ' + fontname,
+              font: fontsize + " " + fontname,
               text: "helloworld",
               fill: new olstyle.Fill({
                 color: "#222"
@@ -232,12 +226,10 @@ export default {
           })
         );
         vectorSource.addFeature(feature);
-        let pixelWidth = this.getWidthOfText(
-          "helloworld",
-          fontname,
-          fontsize
-        );
-        let extent = this.map.getView().calculateExtent([pixelWidth, ~~fontsize.split('px')[0]]);
+        let pixelWidth = this.getWidthOfText("helloworld", fontname, fontsize);
+        let extent = this.map
+          .getView()
+          .calculateExtent([pixelWidth, ~~fontsize.split("px")[0]]);
         let feature2 = new ol.Feature({
           geometry: new olgeom.LineString([
             [x - (extent[2] - extent[0]) / 2, y - (extent[3] - extent[1]) / 2],
