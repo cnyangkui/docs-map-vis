@@ -34,7 +34,7 @@ import projdata from "../../public/data/output/thucnews/projection_dense_tfidf_t
 import similarityMatrix from "../../public/data/output/thucnews/similarity_matrix_thucnews_5round.json";
 import cluserdata from "../../public/data/output/thucnews/cluster.json";
 import mapdata from "../../public/data/output/thucnews/mapdata.json";
-import keywords from "../../public/data/output/thucnews/doc2keyword.json";
+import allDocKeywords from "../../public/data/output/thucnews/doc2keyword.json";
 // { dataExtent, mapExtent, pointIndexInfo, polygons, finalPoints, ecoords, edge2docindex, paths, clusters }
 export default {
   name: "FastMap",
@@ -60,8 +60,9 @@ export default {
       let start = new Date();
       this.processData();
       this.initMap();
-      this.addWords();
-      // this.addClickEventOnRoad();
+      this.addWordsOverview(5);
+      // this.addWords();
+      this.addClickEventOnRoad();
       let end = new Date();
       console.log("耗时:", end - start);
     });
@@ -397,7 +398,53 @@ export default {
       }
       return vectorSource;
     },
-    addWordsOverview() {},
+    addWordsOverview(n) {
+      let wordcount = {};
+      Object.keys(cluserdata).forEach(category => {
+        cluserdata[category].forEach(docid => {
+          let kws = allDocKeywords[docid.toString()];
+          kws.forEach(word => {
+            let key = category + "-" + word;
+            if (wordcount[key] === undefined) {
+              wordcount[key] = [docid];
+            } else {
+              wordcount[key].push(docid);
+            }
+          });
+        });
+      });
+      let wordcountArray = Object.keys(wordcount).filter(
+        d => wordcount[d].length > n
+      );
+      let domain = mapdata.pointIndexInfo.dataPoint;
+      let nodes = [];
+      let links = [];
+      for (let i = domain[0]; i < domain[1]; i++) {
+        nodes.push({
+          id: i,
+          category: "point",
+          x: mapdata.finalPoints[i][0],
+          y: mapdata.finalPoints[i][1]
+        });
+      }
+      for (let i = 0, len = wordcountArray.length; i < len; i++) {
+        nodes.push({
+          id: domain[1] + i,
+          category: "tag",
+          word: wordcountArray[i].split("-")[1]
+        });
+        wordcount[wordcountArray[i]].forEach(docid => {
+          links.push({
+            source: docid,
+            target: domain[1] + i
+          });
+        });
+      }
+      console.log("word number: ", nodes.length);
+      let graph = { nodes: nodes, links: links };
+      // console.log(graph);
+      this.taglayout(graph);
+    },
     addWords() {
       let instance = this;
       let domain = mapdata.pointIndexInfo.dataPoint;
@@ -413,13 +460,13 @@ export default {
       }
       let keywordArr = [];
       let count = 0;
-      Object.keys(keywords).forEach(key => {
+      Object.keys(allDocKeywords).forEach(key => {
         for (let i = 0; i < 1; i++) {
-          // keywordArr.push(keywords[key][i]);
+          // keywordArr.push(allDocKeywords[key][i]);
           keywordArr.push({
             id: domain[1] + count,
             category: "tag",
-            word: keywords[key][i]
+            word: allDocKeywords[key][i]
           });
           links.push({ source: +key, target: domain[1] + count });
           count++;
@@ -440,9 +487,9 @@ export default {
       //   return obj;
       // });
       // nodes = nodes.concat(tagArr);
-      // Object.keys(keywords).forEach(key => {
+      // Object.keys(allDocKeywords).forEach(key => {
       //   for (let i = 0; i < 1; i++) {
-      //     links.push({ source: +key, target: keyword2index[keywords[key][i]] });
+      //     links.push({ source: +key, target: keyword2index[allDocKeywords[key][i]] });
       //   }
       // });
 
@@ -463,7 +510,7 @@ export default {
         .forceSimulation(graph.nodes)
         .force("charge", d3.forceManyBody().distanceMax(0.5))
         .force("link", d3.forceLink(graph.links).distance(1))
-        .alphaMin(0.01)
+        .alphaMin(0.02)
         .on("tick", tick);
 
       let link = d3
@@ -481,6 +528,7 @@ export default {
         .attr("class", "node");
 
       function tick() {
+        console.log("tick1");
         node
           .attr("cx", function(d) {
             if (d.category === "point") {
@@ -538,7 +586,7 @@ export default {
         instance.secondForceSimulation = d3
           .forceSimulation(tagnode)
           .force("charge", d3.forceManyBody().strength(0))
-          .alphaMin(0.1)
+          .alphaMin(0.2)
           .on("tick", function() {
             console.log("tick2");
             let q = d3
@@ -626,7 +674,6 @@ export default {
               instance.wordSource.addFeature(feature);
             }
           });
-          console.log(instance.wordSource.getFeatures().length);
         });
       });
     },
@@ -638,7 +685,7 @@ export default {
           console.log(feature);
           let index = feature.getId().split("-")[1];
           let text = projdata[+index];
-          let kw = keywords[+index];
+          let kw = allDocKeywords[+index];
           console.log(text);
           console.log(kw);
           // instance.$root.eventHub.$emit("compareVoronoi", feature.getId());
@@ -646,7 +693,7 @@ export default {
       });
       this.map.addInteraction(selectSingleClick);
     }
-  },
+  }
   // watch: {
   //   zoom(n, o) {
   //     console.log("zoom ", n);
