@@ -45,7 +45,8 @@ export default {
       firstForceSimulation: null,
       secondForceSimulation: null,
       zoom: 1,
-      color: null,
+      voronoiColor: null,
+      shadeColor: null,
       roadwithScale: null
     };
   },
@@ -60,8 +61,6 @@ export default {
       let start = new Date();
       this.processData();
       this.initMap();
-      this.addWordsOverview(5);
-      // this.addWords();
       this.addClickEventOnRoad();
       let end = new Date();
       console.log("耗时:", end - start);
@@ -69,14 +68,19 @@ export default {
   },
   methods: {
     processData() {
-      this.color = d3
+      this.voronoiColor = d3
         .scaleSequential()
         .domain([0, 0.8])
         .interpolator(d3.interpolateYlGn); //interpolateBrBG,interpolateYlGn
+      this.shadeColor = d3
+        .scaleSequential()
+        .domain([0, 20])
+        .interpolator(d3.interpolateOranges); //interpolateBrBG,interpolateYlGn
       this.roadwithScale = d3
         .scaleLinear()
         .domain([0.2, 0.5])
         .range([1, 5]);
+
       console.log(mapdata);
     },
     initMap() {
@@ -161,7 +165,12 @@ export default {
       let instance = this;
       this.map.on("moveend", function(e) {
         instance.zoom = instance.map.getView().getZoom(); //获取当前地图的缩放级别
+        console.log(instance.zoom);
+        instance.reTagLayout();
       });
+      this.zoom = this.map.getView().getZoom();
+      this.addWordsOverview(5);
+      // this.addForce();
     },
     addDocPoint() {
       let vectorSource = new olsource_Vector();
@@ -368,7 +377,7 @@ export default {
         feature.setStyle(
           new olstyle_Style({
             fill: new olstyle_Fill({
-              color: this.color(weight)
+              color: this.voronoiColor(weight)
             })
           })
         );
@@ -397,6 +406,169 @@ export default {
         vectorSource.addFeature(feature);
       }
       return vectorSource;
+    },
+    addForce() {
+      // let wordcount = {};
+      // Object.keys(cluserdata).forEach(category => {
+      //   cluserdata[category].forEach(docid => {
+      //     let kws = allDocKeywords[docid.toString()];
+      //     kws.forEach(word => {
+      //       let key = category + "-" + word;
+      //       if (wordcount[key] === undefined) {
+      //         wordcount[key] = [docid];
+      //       } else {
+      //         wordcount[key].push(docid);
+      //       }
+      //     });
+      //   });
+      // });
+      // let wordcountArray = Object.keys(wordcount).filter(
+      //   d => wordcount[d].length > 5
+      // );
+      // let domain = mapdata.pointIndexInfo.dataPoint;
+      // let nodes = [];
+      // let links = [];
+      // for (let i = domain[0]; i < domain[1]; i++) {
+      //   nodes.push({
+      //     id: i,
+      //     category: "point",
+      //     x: mapdata.finalPoints[i][0],
+      //     y: mapdata.finalPoints[i][1]
+      //   });
+      // }
+      // for (let i = 0, len = wordcountArray.length; i < len; i++) {
+      //   nodes.push({
+      //     id: domain[1] + i,
+      //     category: "tag",
+      //     word: wordcountArray[i].split("-")[1]
+      //   });
+      //   wordcount[wordcountArray[i]].forEach(docid => {
+      //     links.push({
+      //       source: docid,
+      //       target: domain[1] + i
+      //     });
+      //   });
+      // }
+      // let graph = { nodes: nodes, links: links };
+
+      let domain = mapdata.pointIndexInfo.dataPoint;
+      let nodes = [];
+      let links = [];
+      for (let i = domain[0]; i < domain[1]; i++) {
+        nodes.push({
+          id: i,
+          category: "point",
+          x: mapdata.finalPoints[i][0],
+          y: mapdata.finalPoints[i][1]
+        });
+      }
+      let keywordSet = new Set();
+      Object.keys(allDocKeywords).forEach(key => {
+        for (let i = 0; i < 3; i++) {
+          keywordSet.add(allDocKeywords[key][i]);
+        }
+      });
+      let keywordArr = Array.from(keywordSet);
+      let keyword2index = {};
+      keywordArr.forEach((d, i) => {
+        keyword2index[d] = domain[1] + i;
+      });
+      let tagArr = keywordArr.map((d, i) => {
+        let obj = {};
+        obj["id"] = domain[1] + i;
+        obj["category"] = "tag";
+        obj["word"] = d;
+        return obj;
+      });
+      nodes = nodes.concat(tagArr);
+      Object.keys(allDocKeywords).forEach(key => {
+        for (let i = 0; i < 3; i++) {
+          links.push({
+            source: +key,
+            target: keyword2index[allDocKeywords[key][i]]
+          });
+        }
+      });
+      let graph = { nodes: nodes, links: links };
+
+      let instance = this;
+      let nodesCopy = _.cloneDeep(graph.nodes);
+      let fixedNodes = graph.nodes.filter(d => d.category === "point");
+
+      let force = d3
+        .forceSimulation(graph.nodes)
+        .force("charge", d3.forceManyBody().distanceMax(0.005))
+        .force(
+          "link",
+          d3
+            .forceLink(graph.links)
+            .distance(1)
+            .id(d => d.id)
+        )
+        .alphaMin(0.02)
+        .on("tick", tick);
+
+      let link = d3
+        .selectAll(".link")
+        .data(graph.links)
+        .enter();
+
+      let node = d3
+        .selectAll(".node")
+        .data(graph.nodes)
+        .enter();
+
+      function tick() {
+        console.log("tick1");
+        fixedNodes = fixedNodes.map(d =>
+          Object.assign(d, { fx: nodesCopy[d.id].x, fy: nodesCopy[d.id].y })
+        );
+      }
+
+      force.on("end", function() {
+        console.log("end...");
+        let vectorSource = new olsource_Vector();
+        node.each(function(d, i) {
+          if (d.category === "tag") {
+            let feature = new ol_Feature({
+              geometry: new olgeom_Point([d.x, d.y])
+            });
+            feature.setStyle(
+              new olstyle_Style({
+                text: new olstyle_Text({
+                  font: "10px Microsoft YaHei",
+                  text: d.word,
+                  fill: new olstyle_Fill({
+                    color: "#222"
+                  })
+                })
+              })
+            );
+            vectorSource.addFeature(feature);
+          }
+        });
+        link.each(function(d) {
+          let feature = new ol_Feature({
+            geometry: new olgeom_LineString([
+              [d.source.x, d.source.y],
+              [d.target.x, d.target.y]
+            ])
+          });
+          feature.setStyle(
+            new olstyle_Style({
+              stroke: new olstyle_Stroke({
+                color: "rgb(255, 0, 0, 0.1)"
+              })
+            })
+          );
+          vectorSource.addFeature(feature);
+        });
+        let layer = new ollayer_Vector({
+          title: "Force",
+          source: vectorSource
+        });
+        instance.map.addLayer(layer);
+      });
     },
     addWordsOverview(n) {
       let wordcount = {};
@@ -431,7 +603,8 @@ export default {
         nodes.push({
           id: domain[1] + i,
           category: "tag",
-          word: wordcountArray[i].split("-")[1]
+          word: wordcountArray[i].split("-")[1],
+          count: wordcount[wordcountArray[i]].length
         });
         wordcount[wordcountArray[i]].forEach(docid => {
           links.push({
@@ -440,13 +613,36 @@ export default {
           });
         });
       }
-      console.log("word number: ", nodes.length);
+      console.log("word number: ", nodes.length - domain[1]);
       let graph = { nodes: nodes, links: links };
       // console.log(graph);
       this.taglayout(graph);
     },
-    addWords() {
-      let instance = this;
+    addWords(extent, n) {
+      let wordcount = {};
+      Object.keys(cluserdata).forEach(category => {
+        cluserdata[category].forEach(docid => {
+          if (
+            mapdata.finalPoints[docid][0] > extent[0] &&
+            mapdata.finalPoints[docid][0] < extent[2] &&
+            mapdata.finalPoints[docid][1] > extent[1] &&
+            mapdata.finalPoints[docid][1] < extent[3]
+          ) {
+            let kws = allDocKeywords[docid.toString()];
+            kws.forEach(word => {
+              let key = category + "-" + word;
+              if (wordcount[key] === undefined) {
+                wordcount[key] = [docid];
+              } else {
+                wordcount[key].push(docid);
+              }
+            });
+          }
+        });
+      });
+      let wordcountArray = Object.keys(wordcount).filter(
+        d => wordcount[d].length > n
+      );
       let domain = mapdata.pointIndexInfo.dataPoint;
       let nodes = [];
       let links = [];
@@ -458,42 +654,23 @@ export default {
           y: mapdata.finalPoints[i][1]
         });
       }
-      let keywordArr = [];
-      let count = 0;
-      Object.keys(allDocKeywords).forEach(key => {
-        for (let i = 0; i < 1; i++) {
-          // keywordArr.push(allDocKeywords[key][i]);
-          keywordArr.push({
-            id: domain[1] + count,
-            category: "tag",
-            word: allDocKeywords[key][i]
+      for (let i = 0, len = wordcountArray.length; i < len; i++) {
+        nodes.push({
+          id: domain[1] + i,
+          category: "tag",
+          word: wordcountArray[i].split("-")[1],
+          count: wordcount[wordcountArray[i]].length
+        });
+        wordcount[wordcountArray[i]].forEach(docid => {
+          links.push({
+            source: docid,
+            target: domain[1] + i
           });
-          links.push({ source: +key, target: domain[1] + count });
-          count++;
-        }
-      });
-      nodes = nodes.concat(keywordArr);
-
-      // let keywordArr = Array.from(keywordSet);
-      // let keyword2index = {};
-      // keywordArr.forEach((d, i) => {
-      //   keyword2index[d] = domain[1] + i;
-      // });
-      // let tagArr = keywordArr.map((d, i) => {
-      //   let obj = {};
-      //   obj["id"] = domain[1] + i;
-      //   obj["category"] = "tag";
-      //   obj["word"] = d;
-      //   return obj;
-      // });
-      // nodes = nodes.concat(tagArr);
-      // Object.keys(allDocKeywords).forEach(key => {
-      //   for (let i = 0; i < 1; i++) {
-      //     links.push({ source: +key, target: keyword2index[allDocKeywords[key][i]] });
-      //   }
-      // });
-
+        });
+      }
+      console.log("word number: ", nodes.length - domain[1]);
       let graph = { nodes: nodes, links: links };
+      console.log(graph);
       this.taglayout(graph);
     },
     getWidthOfText(txt, fontname, fontsize) {
@@ -509,8 +686,14 @@ export default {
 
       instance.firstForceSimulation = d3
         .forceSimulation(graph.nodes)
-        .force("charge", d3.forceManyBody().distanceMax(0.5))
-        .force("link", d3.forceLink(graph.links).distance(1))
+        .force("charge", d3.forceManyBody().distanceMax(0.001))
+        .force(
+          "link",
+          d3
+            .forceLink(graph.links)
+            .distance(0)
+            .id(d => d.id)
+        )
         .alphaMin(0.02)
         .on("tick", tick);
 
@@ -526,7 +709,9 @@ export default {
 
       function tick() {
         console.log("tick1");
-        fixedNodes = fixedNodes.map(d => Object.assign(d, {fx: nodesCopy[d.id].x, fy: nodesCopy[d.id].y}));
+        fixedNodes = fixedNodes.map(d =>
+          Object.assign(d, { fx: nodesCopy[d.id].x, fy: nodesCopy[d.id].y })
+        );
       }
 
       instance.firstForceSimulation.on("end", function() {
@@ -536,6 +721,8 @@ export default {
         let tagNodes = graph.nodes.filter(d => d.category === "tag");
 
         for (let i = 0; i < tagNodes.length; i++) {
+          // let tagsize =
+          //   ~~fontsize.split("px")[0] + Math.log2(tagNodes[i].count);
           let pixelWidth = instance.getWidthOfText(
             tagNodes[i].word,
             fontname,
@@ -546,6 +733,7 @@ export default {
             .calculateExtent([pixelWidth, ~~fontsize.split("px")[0]]);
           tagNodes[i].width = extent[2] - extent[0];
           tagNodes[i].height = extent[3] - extent[1];
+          tagNodes[i].count = tagNodes[i].count;
         }
 
         let tagnode = d3
@@ -617,10 +805,7 @@ export default {
           tagnode.each(function(d, i) {
             if (d.category === "tag") {
               let textFeature = new ol_Feature({
-                geometry: new olgeom_Point([
-                  d.x ,
-                  d.y 
-                ])
+                geometry: new olgeom_Point([d.x, d.y])
               });
               textFeature.setStyle(
                 new olstyle_Style({
@@ -647,7 +832,7 @@ export default {
               shadeFeature.setStyle(
                 new olstyle_Style({
                   fill: new olstyle_Fill({
-                    color: "rgb(255, 255, 255, 0.8)"
+                    color: instance.shadeColor(d.count).replace(")", ", 0.5)")//"rgb(255, 255, 255, 0.8)"
                   })
                 })
               );
@@ -657,6 +842,14 @@ export default {
           });
         });
       });
+    },
+    reTagLayout() {
+      let currentExtent = this.map
+        .getView()
+        .calculateExtent(this.map.getSize());
+      this.firstForceSimulation && this.firstForceSimulation.stop();
+      this.secondForceSimulation && this.secondForceSimulation.stop();
+      this.addWords(currentExtent, ~~(10 - this.zoom * 2));
     },
     addClickEventOnRoad() {
       let selectSingleClick = new olinteraction_Select();
@@ -674,15 +867,19 @@ export default {
       });
       this.map.addInteraction(selectSingleClick);
     }
+  },
+  watch: {
+    // zoom(n, o) {
+    //   console.log("zoom ", n);
+    //   let currentExtent = this.map
+    //     .getView()
+    //     .calculateExtent(this.map.getSize());
+    //   console.log(mapdata.mapExtent, currentExtent);
+    //   this.firstForceSimulation && this.firstForceSimulation.stop();
+    //   this.secondForceSimulation && this.secondForceSimulation.stop();
+    //   this.addWords(currentExtent, ~~(10 - n * 2));
+    // }
   }
-  // watch: {
-  //   zoom(n, o) {
-  //     console.log("zoom ", n);
-  //     this.firstForceSimulation.stop();
-  //     this.secondForceSimulation.stop();
-  //     this.addWords();
-  //   }
-  // }
 };
 </script>
 
