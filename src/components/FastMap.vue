@@ -505,6 +505,7 @@ export default {
     taglayout(graph) {
       let instance = this;
       let nodesCopy = _.cloneDeep(graph.nodes);
+      let fixedNodes = graph.nodes.filter(d => d.category === "point");
 
       instance.firstForceSimulation = d3
         .forceSimulation(graph.nodes)
@@ -516,45 +517,16 @@ export default {
       let link = d3
         .selectAll(".link")
         .data(graph.links)
-        .enter()
-        .append("line")
-        .attr("class", "link");
+        .enter();
 
       let node = d3
         .selectAll(".node")
         .data(graph.nodes)
-        .enter()
-        .append("circle")
-        .attr("class", "node");
+        .enter();
 
       function tick() {
         console.log("tick1");
-        node
-          .attr("cx", function(d) {
-            if (d.category === "point") {
-              d.fx = nodesCopy[d.id].x;
-            }
-            return d.x;
-          })
-          .attr("cy", function(d) {
-            if (d.category === "point") {
-              d.fy = nodesCopy[d.id].y;
-            }
-            return d.y;
-          });
-        link
-          .attr("x1", function(d) {
-            return d.source.x;
-          })
-          .attr("y1", function(d) {
-            return d.source.y;
-          })
-          .attr("x2", function(d) {
-            return d.target.x;
-          })
-          .attr("y2", function(d) {
-            return d.target.y;
-          });
+        fixedNodes = fixedNodes.map(d => Object.assign(d, {fx: nodesCopy[d.id].x, fy: nodesCopy[d.id].y}));
       }
 
       instance.firstForceSimulation.on("end", function() {
@@ -579,9 +551,7 @@ export default {
         let tagnode = d3
           .selectAll(".tagnode")
           .data(tagNodes)
-          .enter()
-          .append("circle")
-          .attr("class", "tagnode");
+          .enter();
 
         instance.secondForceSimulation = d3
           .forceSimulation(tagnode)
@@ -599,14 +569,6 @@ export default {
             while (++i < n) {
               q.visit(collide(tagNodes[i]));
             }
-
-            tagnode
-              .attr("x", function(d) {
-                return d.x;
-              })
-              .attr("y", function(d) {
-                return d.y;
-              });
           });
 
         function collide(node) {
@@ -654,13 +616,13 @@ export default {
           }
           tagnode.each(function(d, i) {
             if (d.category === "tag") {
-              let feature = new ol_Feature({
+              let textFeature = new ol_Feature({
                 geometry: new olgeom_Point([
-                  d.x - d.width / 2,
-                  d.y - d.height / 2
+                  d.x ,
+                  d.y 
                 ])
               });
-              feature.setStyle(
+              textFeature.setStyle(
                 new olstyle_Style({
                   text: new olstyle_Text({
                     font: fontsize + " " + fontname,
@@ -671,7 +633,26 @@ export default {
                   })
                 })
               );
-              instance.wordSource.addFeature(feature);
+              let shadeFeature = new ol_Feature({
+                geometry: new olgeom_Polygon([
+                  [
+                    [d.x - d.width / 2, d.y - d.height / 2],
+                    [d.x + d.width / 2, d.y - d.height / 2],
+                    [d.x + d.width / 2, d.y + d.height / 2],
+                    [d.x - d.width / 2, d.y + d.height / 2],
+                    [d.x - d.width / 2, d.y - d.height / 2]
+                  ]
+                ])
+              });
+              shadeFeature.setStyle(
+                new olstyle_Style({
+                  fill: new olstyle_Fill({
+                    color: "rgb(255, 255, 255, 0.8)"
+                  })
+                })
+              );
+              instance.wordSource.addFeature(textFeature);
+              instance.wordSource.addFeature(shadeFeature);
             }
           });
         });
