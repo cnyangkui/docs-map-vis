@@ -101,8 +101,8 @@ export default {
                     opacity: 0.5
                   }),
                   new ollayer_Vector({
-                    source: this.addVoronoi(),
-                    opacity: 0.3
+                    source: this.addVoronoi()
+                    // opacity: 0.3
                   })
                 ]
               }),
@@ -122,11 +122,11 @@ export default {
                 title: "Road",
                 source: this.addRoad()
               }),
-              new ollayer_Vector({
-                title: "DocPoint",
-                visible: false,
-                source: this.addDocPoint()
-              }),
+              // new ollayer_Vector({
+              //   title: "DocPoint",
+              //   visible: false,
+              //   source: this.addDocPoint()
+              // }),
               new ollayer_Vector({
                 title: "Words",
                 source: this.wordSource
@@ -166,10 +166,24 @@ export default {
       this.map.on("moveend", function(e) {
         instance.zoom = instance.map.getView().getZoom(); //获取当前地图的缩放级别
         console.log(instance.zoom);
-        instance.reTagLayout();
+        let currentExtent = instance.map
+          .getView()
+          .calculateExtent(instance.map.getSize());
+        instance.firstForceSimulation && instance.firstForceSimulation.stop();
+        instance.secondForceSimulation && instance.secondForceSimulation.stop();
+        let graphdata = instance.getWords(
+          currentExtent,
+          ~~(10 - instance.zoom * 2)
+        );
+        if (instance.zoom > 3) {
+          instance.taglayout(graphdata, true);
+        } else {
+          instance.taglayout(graphdata);
+        }
       });
       this.zoom = this.map.getView().getZoom();
-      this.addWordsOverview(5);
+      let graphdata = this.getOverviewWords(5);
+      this.taglayout(graphdata);
       // this.addForce();
     },
     addDocPoint() {
@@ -229,7 +243,7 @@ export default {
           feature.setStyle(
             new olstyle_Style({
               fill: new olstyle_Fill({
-                color: "rgb(0, 191, 255)"
+                color: "rgb(0, 191, 255, 0.3)"
               })
             })
           );
@@ -240,7 +254,7 @@ export default {
                 color: "rgb(255, 255, 255, 0)"
               }),
               stroke: new olstyle_Stroke({
-                color: "rgb(0, 0, 0, 0.3)"
+                color: "rgb(0, 0, 0, 0.2)"
               })
             })
           );
@@ -462,31 +476,19 @@ export default {
           y: mapdata.finalPoints[i][1]
         });
       }
-      let keywordSet = new Set();
+      let count = domain[1];
       Object.keys(allDocKeywords).forEach(key => {
-        for (let i = 0; i < 3; i++) {
-          keywordSet.add(allDocKeywords[key][i]);
-        }
-      });
-      let keywordArr = Array.from(keywordSet);
-      let keyword2index = {};
-      keywordArr.forEach((d, i) => {
-        keyword2index[d] = domain[1] + i;
-      });
-      let tagArr = keywordArr.map((d, i) => {
-        let obj = {};
-        obj["id"] = domain[1] + i;
-        obj["category"] = "tag";
-        obj["word"] = d;
-        return obj;
-      });
-      nodes = nodes.concat(tagArr);
-      Object.keys(allDocKeywords).forEach(key => {
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < 5; i++) {
+          nodes.push({
+            id: count,
+            category: "tag",
+            word: allDocKeywords[key][i]
+          });
           links.push({
             source: +key,
-            target: keyword2index[allDocKeywords[key][i]]
+            target: count
           });
+          count++;
         }
       });
       let graph = { nodes: nodes, links: links };
@@ -497,12 +499,17 @@ export default {
 
       let force = d3
         .forceSimulation(graph.nodes)
-        .force("charge", d3.forceManyBody().distanceMax(0.005))
+        .force(
+          "charge",
+          d3
+            .forceManyBody()
+            .distanceMax(0.02)
+        )
         .force(
           "link",
           d3
             .forceLink(graph.links)
-            .distance(1)
+            .distance(0.5)
             .id(d => d.id)
         )
         .alphaMin(0.02)
@@ -570,7 +577,7 @@ export default {
         instance.map.addLayer(layer);
       });
     },
-    addWordsOverview(n) {
+    getOverviewWords(n) {
       let wordcount = {};
       Object.keys(cluserdata).forEach(category => {
         cluserdata[category].forEach(docid => {
@@ -613,12 +620,14 @@ export default {
           });
         });
       }
-      console.log("word number: ", nodes.length - domain[1]);
+      console.log(
+        "word number: ",
+        nodes.filter(d => d.category === "tag").length
+      );
       let graph = { nodes: nodes, links: links };
-      // console.log(graph);
-      this.taglayout(graph);
+      return graph;
     },
-    addWords(extent, n) {
+    getWords(extent, n) {
       let wordcount = {};
       Object.keys(cluserdata).forEach(category => {
         cluserdata[category].forEach(docid => {
@@ -668,10 +677,12 @@ export default {
           });
         });
       }
-      console.log("word number: ", nodes.length - domain[1]);
+      console.log(
+        "word number: ",
+        nodes.filter(d => d.category === "tag").length
+      );
       let graph = { nodes: nodes, links: links };
-      console.log(graph);
-      this.taglayout(graph);
+      return graph;
     },
     getWidthOfText(txt, fontname, fontsize) {
       let canvas = document.createElement("canvas");
@@ -679,19 +690,19 @@ export default {
       ctx.font = fontsize + " " + fontname;
       return ctx.measureText(txt).width;
     },
-    taglayout(graph) {
+    taglayout(graph, diffFontsize = false) {
       let instance = this;
       let nodesCopy = _.cloneDeep(graph.nodes);
       let fixedNodes = graph.nodes.filter(d => d.category === "point");
 
       instance.firstForceSimulation = d3
         .forceSimulation(graph.nodes)
-        .force("charge", d3.forceManyBody().distanceMax(0.001))
+        .force("charge", d3.forceManyBody().distanceMax(0.02))
         .force(
           "link",
           d3
             .forceLink(graph.links)
-            .distance(0)
+            .distance(0.5)
             .id(d => d.id)
         )
         .alphaMin(0.02)
@@ -721,19 +732,22 @@ export default {
         let tagNodes = graph.nodes.filter(d => d.category === "tag");
 
         for (let i = 0; i < tagNodes.length; i++) {
-          // let tagsize =
-          //   ~~fontsize.split("px")[0] + Math.log2(tagNodes[i].count);
+          let newfontsize = ~~fontsize.split("px")[0];
+          if (diffFontsize) {
+            newfontsize = newfontsize + Math.log2(tagNodes[i].count) * instance.zoom;
+          }
+          newfontsize = ~~newfontsize;
           let pixelWidth = instance.getWidthOfText(
             tagNodes[i].word,
             fontname,
-            fontsize
+            newfontsize + "px"
           );
           let extent = instance.map
             .getView()
-            .calculateExtent([pixelWidth, ~~fontsize.split("px")[0]]);
+            .calculateExtent([pixelWidth, newfontsize]);
           tagNodes[i].width = extent[2] - extent[0];
           tagNodes[i].height = extent[3] - extent[1];
-          tagNodes[i].count = tagNodes[i].count;
+          tagNodes[i].fontsize = newfontsize;
         }
 
         let tagnode = d3
@@ -741,9 +755,11 @@ export default {
           .data(tagNodes)
           .enter();
 
+        // let center = instance.map.getView().getCenter();
         instance.secondForceSimulation = d3
-          .forceSimulation(tagnode)
+          .forceSimulation(tagNodes)
           .force("charge", d3.forceManyBody().strength(0))
+          // .force('center', d3.forceCenter(center[0], center[1]))
           .alphaMin(0.2)
           .on("tick", function() {
             console.log("tick2");
@@ -810,7 +826,7 @@ export default {
               textFeature.setStyle(
                 new olstyle_Style({
                   text: new olstyle_Text({
-                    font: fontsize + " " + fontname,
+                    font: d.fontsize + "px " + fontname,
                     text: d.word,
                     fill: new olstyle_Fill({
                       color: "#222"
@@ -832,7 +848,7 @@ export default {
               shadeFeature.setStyle(
                 new olstyle_Style({
                   fill: new olstyle_Fill({
-                    color: instance.shadeColor(d.count).replace(")", ", 0.5)")//"rgb(255, 255, 255, 0.8)"
+                    color: instance.shadeColor(d.count).replace(")", ", 0.5)") //"rgb(255, 255, 255, 0.8)"
                   })
                 })
               );
@@ -842,14 +858,6 @@ export default {
           });
         });
       });
-    },
-    reTagLayout() {
-      let currentExtent = this.map
-        .getView()
-        .calculateExtent(this.map.getSize());
-      this.firstForceSimulation && this.firstForceSimulation.stop();
-      this.secondForceSimulation && this.secondForceSimulation.stop();
-      this.addWords(currentExtent, ~~(10 - this.zoom * 2));
     },
     addClickEventOnRoad() {
       let selectSingleClick = new olinteraction_Select();
