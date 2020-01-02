@@ -41,7 +41,15 @@ export default {
   data() {
     return {
       map: null,
+      layers: {
+        colorLumpLayer: null,
+        voronoiLayer: null,
+        clusterLayer: null,
+        roadLayer: null,
+        wordLayer: null
+      },
       wordSource: new olsource_Vector(),
+      displayKeywords: null,
       firstForceSimulation: null,
       secondForceSimulation: null,
       zoom: 1,
@@ -50,12 +58,8 @@ export default {
       roadwithScale: null
     };
   },
-  created: function() {
-    // this.$root.eventHub.$on("compareVoronoi", this.compareVoronoi);
-  },
-  beforeDestroy: function() {
-    // this.$root.eventHub.$off("compareVoronoi");
-  },
+  created: function() {},
+  beforeDestroy: function() {},
   mounted() {
     this.$nextTick(() => {
       let start = new Date();
@@ -84,6 +88,32 @@ export default {
       console.log(mapdata);
     },
     initMap() {
+      let instance = this;
+      this.layers.colorLumpLayer = new ollayer_Vector({
+        title: "ColorLump",
+        source: this.addColorLump(),
+        opacity: 0.5
+      });
+      this.layers.voronoiLayer = new ollayer_Vector({
+        title: "Voronoi",
+        source: this.addVoronoi()
+        // opacity: 0.3
+      });
+      this.layers.clusterLayer = new ollayer_Vector({
+        title: "Cluster",
+        // type: "base",
+        visible: false,
+        source: this.addCluster(),
+        opacity: 0.3
+      });
+      this.layers.roadLayer = new ollayer_Vector({
+        title: "Road",
+        source: this.addRoad()
+      });
+      this.layers.wordLayer = new ollayer_Vector({
+        title: "Words",
+        source: this.wordSource
+      });
       this.map = new ol_Map({
         target: "fastmap",
         layers: [
@@ -92,45 +122,27 @@ export default {
             layers: [
               new ollayer_Group({
                 title: "Topography",
-                type: "base",
+                // type: "base",
                 combine: true,
                 visible: true,
                 layers: [
-                  new ollayer_Vector({
-                    source: this.addColorLump(),
-                    opacity: 0.5
-                  }),
-                  new ollayer_Vector({
-                    source: this.addVoronoi()
-                    // opacity: 0.3
-                  })
+                  instance.layers.colorLumpLayer,
+                  instance.layers.voronoiLayer
                 ]
               }),
-              new ollayer_Vector({
-                title: "Cluster",
-                type: "base",
-                visible: false,
-                source: this.addCluster(),
-                opacity: 0.3
-              })
+              instance.layers.clusterLayer
             ]
           }),
           new ollayer_Group({
             title: "Overlays",
             layers: [
-              new ollayer_Vector({
-                title: "Road",
-                source: this.addRoad()
-              }),
+              instance.layers.roadLayer,
               // new ollayer_Vector({
               //   title: "DocPoint",
               //   visible: false,
               //   source: this.addDocPoint()
               // }),
-              new ollayer_Vector({
-                title: "Words",
-                source: this.wordSource
-              })
+              instance.layers.wordLayer
             ]
           })
         ],
@@ -162,10 +174,9 @@ export default {
           zoom: 1
         })
       });
-      let instance = this;
       this.map.on("moveend", function(e) {
         instance.zoom = instance.map.getView().getZoom(); //获取当前地图的缩放级别
-        console.log(instance.zoom);
+        console.log("zoom: " + instance.zoom);
         let currentExtent = instance.map
           .getView()
           .calculateExtent(instance.map.getSize());
@@ -422,22 +433,22 @@ export default {
       return vectorSource;
     },
     addForce() {
-      // let wordcount = {};
+      // let word2doclist = {};
       // Object.keys(cluserdata).forEach(category => {
       //   cluserdata[category].forEach(docid => {
       //     let kws = allDocKeywords[docid.toString()];
       //     kws.forEach(word => {
       //       let key = category + "-" + word;
-      //       if (wordcount[key] === undefined) {
-      //         wordcount[key] = [docid];
+      //       if (word2doclist[key] === undefined) {
+      //         word2doclist[key] = [docid];
       //       } else {
-      //         wordcount[key].push(docid);
+      //         word2doclist[key].push(docid);
       //       }
       //     });
       //   });
       // });
-      // let wordcountArray = Object.keys(wordcount).filter(
-      //   d => wordcount[d].length > 5
+      // let wordArray = Object.keys(word2doclist).filter(
+      //   d => word2doclist[d].length > 5
       // );
       // let domain = mapdata.pointIndexInfo.dataPoint;
       // let nodes = [];
@@ -450,13 +461,13 @@ export default {
       //     y: mapdata.finalPoints[i][1]
       //   });
       // }
-      // for (let i = 0, len = wordcountArray.length; i < len; i++) {
+      // for (let i = 0, len = wordArray.length; i < len; i++) {
       //   nodes.push({
       //     id: domain[1] + i,
       //     category: "tag",
-      //     word: wordcountArray[i].split("-")[1]
+      //     word: wordArray[i].split("-")[1]
       //   });
-      //   wordcount[wordcountArray[i]].forEach(docid => {
+      //   word2doclist[wordArray[i]].forEach(docid => {
       //     links.push({
       //       source: docid,
       //       target: domain[1] + i
@@ -499,12 +510,7 @@ export default {
 
       let force = d3
         .forceSimulation(graph.nodes)
-        .force(
-          "charge",
-          d3
-            .forceManyBody()
-            .distanceMax(0.02)
-        )
+        .force("charge", d3.forceManyBody().distanceMax(0.02))
         .force(
           "link",
           d3
@@ -578,23 +584,32 @@ export default {
       });
     },
     getOverviewWords(n) {
-      let wordcount = {};
+      let word2doclist = {};
       Object.keys(cluserdata).forEach(category => {
         cluserdata[category].forEach(docid => {
           let kws = allDocKeywords[docid.toString()];
           kws.forEach(word => {
             let key = category + "-" + word;
-            if (wordcount[key] === undefined) {
-              wordcount[key] = [docid];
+            if (word2doclist[key] === undefined) {
+              word2doclist[key] = [docid];
             } else {
-              wordcount[key].push(docid);
+              word2doclist[key].push(docid);
             }
           });
         });
       });
-      let wordcountArray = Object.keys(wordcount).filter(
-        d => wordcount[d].length > n
-      );
+      let wordArray = [];
+      Object.keys(word2doclist).forEach(d => {
+        if (word2doclist[d].length > n) {
+          wordArray.push({
+            cluster: d.split("-")[0],
+            word: d.split("-")[1],
+            doclist: word2doclist[d]
+          });
+        }
+      });
+      this.displayKeywords = wordArray;
+
       let domain = mapdata.pointIndexInfo.dataPoint;
       let nodes = [];
       let links = [];
@@ -606,20 +621,22 @@ export default {
           y: mapdata.finalPoints[i][1]
         });
       }
-      for (let i = 0, len = wordcountArray.length; i < len; i++) {
+      for (let i = 0, len = wordArray.length; i < len; i++) {
         nodes.push({
           id: domain[1] + i,
           category: "tag",
-          word: wordcountArray[i].split("-")[1],
-          count: wordcount[wordcountArray[i]].length
+          cluster: wordArray[i].cluster,
+          word: wordArray[i].word,
+          doclist: wordArray[i].doclist
         });
-        wordcount[wordcountArray[i]].forEach(docid => {
+        wordArray[i].doclist.forEach(docid => {
           links.push({
             source: docid,
             target: domain[1] + i
           });
         });
       }
+
       console.log(
         "word number: ",
         nodes.filter(d => d.category === "tag").length
@@ -628,7 +645,7 @@ export default {
       return graph;
     },
     getWords(extent, n) {
-      let wordcount = {};
+      let word2doclist = {};
       Object.keys(cluserdata).forEach(category => {
         cluserdata[category].forEach(docid => {
           if (
@@ -640,18 +657,27 @@ export default {
             let kws = allDocKeywords[docid.toString()];
             kws.forEach(word => {
               let key = category + "-" + word;
-              if (wordcount[key] === undefined) {
-                wordcount[key] = [docid];
+              if (word2doclist[key] === undefined) {
+                word2doclist[key] = [docid];
               } else {
-                wordcount[key].push(docid);
+                word2doclist[key].push(docid);
               }
             });
           }
         });
       });
-      let wordcountArray = Object.keys(wordcount).filter(
-        d => wordcount[d].length > n
-      );
+      let wordArray = [];
+      Object.keys(word2doclist).forEach(d => {
+        if (word2doclist[d].length > n) {
+          wordArray.push({
+            cluster: d.split("-")[0],
+            word: d.split("-")[1],
+            doclist: word2doclist[d]
+          });
+        }
+      });
+      this.displayKeywords = wordArray;
+
       let domain = mapdata.pointIndexInfo.dataPoint;
       let nodes = [];
       let links = [];
@@ -663,20 +689,22 @@ export default {
           y: mapdata.finalPoints[i][1]
         });
       }
-      for (let i = 0, len = wordcountArray.length; i < len; i++) {
+      for (let i = 0, len = wordArray.length; i < len; i++) {
         nodes.push({
           id: domain[1] + i,
           category: "tag",
-          word: wordcountArray[i].split("-")[1],
-          count: wordcount[wordcountArray[i]].length
+          cluster: wordArray[i].cluster,
+          word: wordArray[i].word,
+          doclist: wordArray[i].doclist
         });
-        wordcount[wordcountArray[i]].forEach(docid => {
+        wordArray[i].doclist.forEach(docid => {
           links.push({
             source: docid,
             target: domain[1] + i
           });
         });
       }
+
       console.log(
         "word number: ",
         nodes.filter(d => d.category === "tag").length
@@ -708,15 +736,15 @@ export default {
         .alphaMin(0.02)
         .on("tick", tick);
 
-      let link = d3
-        .selectAll(".link")
-        .data(graph.links)
-        .enter();
+      // let link = d3
+      //   .selectAll(".link")
+      //   .data(graph.links)
+      //   .enter();
 
-      let node = d3
-        .selectAll(".node")
-        .data(graph.nodes)
-        .enter();
+      // let node = d3
+      //   .selectAll(".node")
+      //   .data(graph.nodes)
+      //   .enter();
 
       function tick() {
         console.log("tick1");
@@ -734,7 +762,9 @@ export default {
         for (let i = 0; i < tagNodes.length; i++) {
           let newfontsize = ~~fontsize.split("px")[0];
           if (diffFontsize) {
-            newfontsize = newfontsize + Math.log2(tagNodes[i].count) * instance.zoom;
+            newfontsize =
+              newfontsize +
+              Math.log(tagNodes[i].doclist.length) * instance.zoom;
           }
           newfontsize = ~~newfontsize;
           let pixelWidth = instance.getWidthOfText(
@@ -750,10 +780,10 @@ export default {
           tagNodes[i].fontsize = newfontsize;
         }
 
-        let tagnode = d3
-          .selectAll(".tagnode")
-          .data(tagNodes)
-          .enter();
+        // let tagnode = d3
+        //   .selectAll(".tagnode")
+        //   .data(tagNodes)
+        //   .enter();
 
         // let center = instance.map.getView().getCenter();
         instance.secondForceSimulation = d3
@@ -818,7 +848,7 @@ export default {
           if (instance.wordSource.getFeatures().length > 0) {
             instance.wordSource.clear();
           }
-          tagnode.each(function(d, i) {
+          tagNodes.forEach(function(d, i) {
             if (d.category === "tag") {
               let textFeature = new ol_Feature({
                 geometry: new olgeom_Point([d.x, d.y])
@@ -834,6 +864,7 @@ export default {
                   })
                 })
               );
+              textFeature.setId("text-" + i);
               let shadeFeature = new ol_Feature({
                 geometry: new olgeom_Polygon([
                   [
@@ -848,10 +879,13 @@ export default {
               shadeFeature.setStyle(
                 new olstyle_Style({
                   fill: new olstyle_Fill({
-                    color: instance.shadeColor(d.count).replace(")", ", 0.5)") //"rgb(255, 255, 255, 0.8)"
+                    color: instance
+                      .shadeColor(d.doclist.length)
+                      .replace(")", ", 0.5)") //"rgb(255, 255, 255, 0.8)"
                   })
                 })
               );
+              shadeFeature.setId("shade-" + i);
               instance.wordSource.addFeature(textFeature);
               instance.wordSource.addFeature(shadeFeature);
             }
@@ -864,29 +898,70 @@ export default {
       let instance = this;
       selectSingleClick.on("select", function(e) {
         e.selected.forEach(feature => {
-          console.log(feature);
-          let index = feature.getId().split("-")[1];
-          let text = projdata[+index];
-          let kw = allDocKeywords[+index];
-          console.log(text);
-          console.log(kw);
-          // instance.$root.eventHub.$emit("compareVoronoi", feature.getId());
+          let featureId = feature.getId();
+          console.log(featureId);
+          let featureType = featureId.split("-")[0];
+          let featureIndex = featureId.split("-")[1];
+          switch (featureType) {
+            case "text":
+              (function() {
+                let obj = instance.displayKeywords[+featureIndex];
+                console.log(obj);
+                let features = instance.layers.voronoiLayer
+                  .getSource()
+                  .getFeatures();
+                for (let i in features) {
+                  if (
+                    obj.doclist.includes(+features[i].getId().split("-")[1])
+                  ) {
+                    console.log(features[i].getId());
+                    features[i].setStyle(
+                      new olstyle_Style({
+                        fill: new olstyle_Fill({
+                          color: "rgb(255, 0, 0, 0.3)"
+                        }),
+                        stroke: new olstyle_Stroke({
+                          color: "rgb(0, 0, 0, 0.2)"
+                        })
+                      })
+                    );
+                  }
+                }
+              })();
+              break;
+            case "shade":
+              (function() {
+                let obj = instance.displayKeywords[+featureIndex];
+                console.log(obj);
+                let features = instance.layers.voronoiLayer
+                  .getSource()
+                  .getFeatures();
+                for (let i in features) {
+                  if (
+                    obj.doclist.includes(+features[i].getId().split("-")[1])
+                  ) {
+                    console.log(features[i].getId());
+                    features[i].setStyle(
+                      new olstyle_Style({
+                        fill: new olstyle_Fill({
+                          color: "rgb(255, 0, 0, 0.3)"
+                        }),
+                        stroke: new olstyle_Stroke({
+                          color: "rgb(0, 0, 0, 0.2)"
+                        })
+                      })
+                    );
+                  }
+                }
+              })();
+              break;
+            default:
+              break;
+          }
         });
       });
       this.map.addInteraction(selectSingleClick);
     }
-  },
-  watch: {
-    // zoom(n, o) {
-    //   console.log("zoom ", n);
-    //   let currentExtent = this.map
-    //     .getView()
-    //     .calculateExtent(this.map.getSize());
-    //   console.log(mapdata.mapExtent, currentExtent);
-    //   this.firstForceSimulation && this.firstForceSimulation.stop();
-    //   this.secondForceSimulation && this.secondForceSimulation.stop();
-    //   this.addWords(currentExtent, ~~(10 - n * 2));
-    // }
   }
 };
 </script>
