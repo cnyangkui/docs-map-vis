@@ -1,6 +1,6 @@
 const d3 = require("d3")
-// import projdata from '../../../public/data/output/thucnews/projection_dense_tfidf_thucnews.json'
-// import similarityMatrix from '../../../public/data/output/thucnews/similarity_matrix_thucnews_5round.json'
+// import projdata from '../../../public/data/output/thucnews/projection_dense_tfidf.json'
+// import similarityMatrix from '../../../public/data/output/thucnews/similarity_matrix_5round.json'
 
 /**
  * 获得在2D平面距离超过一定阈值，但是相似度较高文档对。这些文档比较相似，但是在2D平面相距较远

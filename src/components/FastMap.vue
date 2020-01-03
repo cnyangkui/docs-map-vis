@@ -30,8 +30,8 @@ import {
   OverviewMap as olcontrol_OverviewMap
 } from "ol/control";
 import LayerSwitcher from "ol-layerswitcher/src/ol-layerswitcher.js";
-import projdata from "../../public/data/output/thucnews/projection_dense_tfidf_thucnews.json";
-import similarityMatrix from "../../public/data/output/thucnews/similarity_matrix_thucnews_5round.json";
+import projdata from "../../public/data/output/thucnews/projection_dense_tfidf.json";
+import similarityMatrix from "../../public/data/output/thucnews/similarity_matrix_5round.json";
 import cluserdata from "../../public/data/output/thucnews/cluster.json";
 import mapdata from "../../public/data/output/thucnews/mapdata.json";
 import allDocKeywords from "../../public/data/output/thucnews/doc2keyword.json";
@@ -897,60 +897,48 @@ export default {
       let selectSingleClick = new olinteraction_Select();
       let instance = this;
       selectSingleClick.on("select", function(e) {
+        // console.log(e);
         e.selected.forEach(feature => {
           let featureId = feature.getId();
-          console.log(featureId);
           let featureType = featureId.split("-")[0];
           let featureIndex = featureId.split("-")[1];
           switch (featureType) {
             case "text":
-              (function() {
-                let obj = instance.displayKeywords[+featureIndex];
-                console.log(obj);
-                let features = instance.layers.voronoiLayer
-                  .getSource()
-                  .getFeatures();
-                for (let i in features) {
-                  if (
-                    obj.doclist.includes(+features[i].getId().split("-")[1])
-                  ) {
-                    console.log(features[i].getId());
-                    features[i].setStyle(
-                      new olstyle_Style({
-                        fill: new olstyle_Fill({
-                          color: "rgb(255, 0, 0, 0.3)"
-                        }),
-                        stroke: new olstyle_Stroke({
-                          color: "rgb(0, 0, 0, 0.2)"
-                        })
-                      })
-                    );
-                  }
-                }
-              })();
-              break;
             case "shade":
               (function() {
                 let obj = instance.displayKeywords[+featureIndex];
-                console.log(obj);
                 let features = instance.layers.voronoiLayer
                   .getSource()
                   .getFeatures();
                 for (let i in features) {
+                  let index = ~~features[i].getId().split("-")[1];
                   if (
-                    obj.doclist.includes(+features[i].getId().split("-")[1])
+                    index >= mapdata.pointIndexInfo.dataPoint[0] &&
+                    index < mapdata.pointIndexInfo.dataPoint[1]
                   ) {
-                    console.log(features[i].getId());
-                    features[i].setStyle(
-                      new olstyle_Style({
-                        fill: new olstyle_Fill({
-                          color: "rgb(255, 0, 0, 0.3)"
-                        }),
-                        stroke: new olstyle_Stroke({
-                          color: "rgb(0, 0, 0, 0.2)"
+                    if (obj.doclist.includes(index)) {
+                      features[i].setStyle(
+                        new olstyle_Style({
+                          fill: new olstyle_Fill({
+                            color: "rgb(255, 0, 0, 0.3)"
+                          }),
+                          stroke: new olstyle_Stroke({
+                            color: "rgb(0, 0, 0, 0.2)"
+                          })
                         })
-                      })
-                    );
+                      );
+                    } else {
+                      features[i].setStyle(
+                        new olstyle_Style({
+                          fill: new olstyle_Fill({
+                            color: "rgb(255, 255, 255, 0)"
+                          }),
+                          stroke: new olstyle_Stroke({
+                            color: "rgb(0, 0, 0, 0.2)"
+                          })
+                        })
+                      );
+                    }
                   }
                 }
               })();
@@ -959,6 +947,7 @@ export default {
               break;
           }
         });
+        e.deselected.forEach(feature => {});
       });
       this.map.addInteraction(selectSingleClick);
     }

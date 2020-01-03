@@ -1,7 +1,6 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
 import Navigation from '../pages/Navigation'
-import Contour from '../components/Contour.vue'
 import Voronoi from '../components/Voronoi.vue'
 import EnhancedVoronoi from '../components/EnhancedVoronoi.vue'
 import Triangulation from '../components/Triangulation.vue'
@@ -22,7 +21,6 @@ const router = new VueRouter({
   routes: [
     { path:'/', component: Navigation },
     { path: '/navigation', name: 'navigation', component: Navigation },
-    { path: '/contour', name: 'contour', component: Contour },
     { path: '/voronoi', name: 'voronoi', component: Voronoi },
     { path: '/enhancedVoronoi', name: 'enhancedVoronoi', component: EnhancedVoronoi },
     { path: '/triangulation', name: 'triangulation', component: Triangulation },

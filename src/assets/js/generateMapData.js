@@ -3,8 +3,8 @@ import * as d3 from "d3"
 import _ from "lodash"
 import longdisHighsimilarity from "./dist2similarity.js";
 import Graph from "./dijkstra.js";
-import projdata from "../../../public/data/output/thucnews/projection_dense_tfidf_thucnews.json";
-import similarityMatrix from "../../../public/data/output/thucnews/similarity_matrix_thucnews_5round.json";
+import projdata from "../../../public/data/output/thucnews/projection_dense_tfidf.json";
+import similarityMatrix from "../../../public/data/output/thucnews/similarity_matrix_5round.json";
 import cluserdata from "../../../public/data/output/thucnews/cluster.json";
 
 /**

@@ -26,8 +26,8 @@ import * as olproj from "ol/proj";
 import * as olgeom from "ol/geom";
 import * as olstyle from "ol/style";
 import * as olinteraction from "ol/interaction";
-import projdata from "../../public/data/output/thucnews/projection_dense_tfidf_thucnews.json";
-import similarityMatrix from "../../public/data/output/thucnews/similarity_matrix_thucnews_5round.json";
+import projdata from "../../public/data/output/thucnews/projection_dense_tfidf.json";
+import similarityMatrix from "../../public/data/output/thucnews/similarity_matrix_5round.json";
 import longdisHighsimilarity from "../assets/js/dist2similarity.js";
 export default {
   name: "VoronoiDocs",
@@ -351,14 +351,12 @@ export default {
       display: inline-block;
       width: 60%;
       height: 100%;
-      float: left;
     }
 
     #docs-panel {
       display: inline-block;
       width: 40%;
       height: 100%;
-      float: right;
       overflow-y: scroll;
 
       #docs-panel-control {

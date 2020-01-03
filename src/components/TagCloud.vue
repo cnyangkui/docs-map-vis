@@ -17,7 +17,7 @@ import * as olstyle from "ol/style";
 import * as olinteraction from "ol/interaction";
 import * as olcontrol from "ol/control";
 import LayerSwitcher from "ol-layerswitcher/src/ol-layerswitcher.js";
-import projdata from "../../public/data/output/thucnews/projection_dense_tfidf_thucnews.json";
+import projdata from "../../public/data/output/thucnews/projection_dense_tfidf.json";
 // import { initTree, wordsCollide } from "../assets/js/tagcloud.js";
 export default {
   name: "Map",

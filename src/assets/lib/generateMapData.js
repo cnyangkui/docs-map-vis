@@ -3,8 +3,8 @@ const d3 = require("d3")
 const _  = require("lodash")
 const longdisHighsimilarity = require("./dist2similarity.js")
 const Graph = require("./dijkstra.js")
-const projdata = require("../../../public/data/output/thucnews/projection_dense_tfidf_thucnews.json")
-const similarityMatrix = require("../../../public/data/output/thucnews/similarity_matrix_thucnews_5round.json")
+const projdata = require("../../../public/data/output/thucnews/projection_dense_tfidf.json")
+const similarityMatrix = require("../../../public/data/output/thucnews/similarity_matrix_5round.json")
 const cluserdata = require("../../../public/data/output/thucnews/cluster.json")
 
 /**
@@ -384,7 +384,7 @@ function processMapData(projdata, similarityMatrix, clusterdata, config) {
 }
 
 let config= {
-  mapIterationNum: 500,
+  mapIterationNum: 300,
   outerPointNum: 500,
   innerXNum: 20,
   innerYNum: 20,

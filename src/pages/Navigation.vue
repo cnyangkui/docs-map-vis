@@ -50,6 +50,10 @@
         <a href="/map"><img src="/images/9.jpg"/></a>
         <p>Map</p>
       </div>
+       <div class="item">
+        <a href="/fastmap"><img src="/images/10.jpg"/></a>
+        <p>Map + Words</p>
+      </div>
     </div>
   </div>
 </template>
