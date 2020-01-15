@@ -12,7 +12,9 @@ import EnhancedVoronoiOceanLake from '../components/EnhancedVoronoiOceanLake.vue
 import Map from '../components/Map.vue'
 import Map2 from '../components/Map2.vue'
 import FastMap from '../components/FastMap.vue'
+import FastMap2 from '../components/FastMap2.vue'
 import TagCloud from '../components/TagCloud.vue'
+import DocsMap from '../components/DocsMap.vue'
 
 Vue.use(VueRouter)
 
@@ -32,7 +34,9 @@ const router = new VueRouter({
     { path: '/map', name: 'map', component: Map },
     { path: '/map2', name: 'map2', component: Map2 },
     { path: '/fastMap', name: 'FastMap', component: FastMap },
-    { path: '/tagcloud', name: 'tagcloud', component: TagCloud }
+    { path: '/fastMap2', name: 'FastMap2', component: FastMap2 },
+    { path: '/tagcloud', name: 'tagcloud', component: TagCloud },
+    { path: '/docsMap', name: 'docsMap', component: DocsMap }
   ]
 });
 

@@ -30,11 +30,11 @@ import {
   OverviewMap as olcontrol_OverviewMap
 } from "ol/control";
 import LayerSwitcher from "ol-layerswitcher/src/ol-layerswitcher.js";
-import projdata from "../../public/data/output/thucnews/projection_dense_tfidf.json";
-import similarityMatrix from "../../public/data/output/thucnews/similarity_matrix_5round.json";
-import cluserdata from "../../public/data/output/thucnews/cluster.json";
-import mapdata from "../../public/data/output/thucnews/mapdata.json";
-import allDocKeywords from "../../public/data/output/thucnews/doc2keyword.json";
+// import projdata from "../../public/data/output/finance/projection_dense_tfidf.json";
+import similarityMatrix from "../../public/data/output/finance/similarity_matrix_5round.json";
+import clusterdata from "../../public/data/output/finance/cluster.json";
+import mapdata from "../../public/data/output/finance/mapdata.json";
+import allDocKeywords from "../../public/data/output/finance/keywords.json";
 // { dataExtent, mapExtent, pointIndexInfo, polygons, finalPoints, ecoords, edge2docindex, paths, clusters }
 export default {
   name: "FastMap",
@@ -106,10 +106,10 @@ export default {
         source: this.addCluster(),
         opacity: 0.3
       });
-      this.layers.roadLayer = new ollayer_Vector({
-        title: "Road",
-        source: this.addRoad()
-      });
+      // this.layers.roadLayer = new ollayer_Vector({
+      //   title: "Road",
+      //   source: this.addRoad()
+      // });
       this.layers.wordLayer = new ollayer_Vector({
         title: "Words",
         source: this.wordSource
@@ -136,7 +136,7 @@ export default {
           new ollayer_Group({
             title: "Overlays",
             layers: [
-              instance.layers.roadLayer,
+              // instance.layers.roadLayer,
               // new ollayer_Vector({
               //   title: "DocPoint",
               //   visible: false,
@@ -182,19 +182,19 @@ export default {
           .calculateExtent(instance.map.getSize());
         instance.firstForceSimulation && instance.firstForceSimulation.stop();
         instance.secondForceSimulation && instance.secondForceSimulation.stop();
-        let graphdata = instance.getWords(
-          currentExtent,
-          ~~(10 - instance.zoom * 2)
-        );
-        if (instance.zoom > 3) {
-          instance.taglayout(graphdata, true);
-        } else {
-          instance.taglayout(graphdata);
-        }
+        // let graphdata = instance.getWords(
+        //   currentExtent,
+        //   ~~(10 - instance.zoom * 2)
+        // );
+        // if (instance.zoom > 3) {
+        //   instance.taglayout(graphdata, true);
+        // } else {
+        //   instance.taglayout(graphdata);
+        // }
       });
-      this.zoom = this.map.getView().getZoom();
-      let graphdata = this.getOverviewWords(5);
-      this.taglayout(graphdata);
+      // this.zoom = this.map.getView().getZoom();
+      // let graphdata = this.getOverviewWords(5);
+      // this.taglayout(graphdata);
       // this.addForce();
     },
     addDocPoint() {
@@ -295,10 +295,10 @@ export default {
       return vectorSource;
     },
     addCluster() {
-      let clsuterNum = Object.keys(cluserdata).length;
+      let clusterNum = Object.keys(mapdata.clusters).length;
       let color = d3
         .scaleSequential()
-        .domain([0, clsuterNum])
+        .domain([0, clusterNum])
         .interpolator(d3.interpolateYlGn);
       let vectorSource = new olsource_Vector();
       mapdata.polygons.forEach((pg, index) => {
@@ -432,162 +432,11 @@ export default {
       }
       return vectorSource;
     },
-    addForce() {
-      // let word2doclist = {};
-      // Object.keys(cluserdata).forEach(category => {
-      //   cluserdata[category].forEach(docid => {
-      //     let kws = allDocKeywords[docid.toString()];
-      //     kws.forEach(word => {
-      //       let key = category + "-" + word;
-      //       if (word2doclist[key] === undefined) {
-      //         word2doclist[key] = [docid];
-      //       } else {
-      //         word2doclist[key].push(docid);
-      //       }
-      //     });
-      //   });
-      // });
-      // let wordArray = Object.keys(word2doclist).filter(
-      //   d => word2doclist[d].length > 5
-      // );
-      // let domain = mapdata.pointIndexInfo.dataPoint;
-      // let nodes = [];
-      // let links = [];
-      // for (let i = domain[0]; i < domain[1]; i++) {
-      //   nodes.push({
-      //     id: i,
-      //     category: "point",
-      //     x: mapdata.finalPoints[i][0],
-      //     y: mapdata.finalPoints[i][1]
-      //   });
-      // }
-      // for (let i = 0, len = wordArray.length; i < len; i++) {
-      //   nodes.push({
-      //     id: domain[1] + i,
-      //     category: "tag",
-      //     word: wordArray[i].split("-")[1]
-      //   });
-      //   word2doclist[wordArray[i]].forEach(docid => {
-      //     links.push({
-      //       source: docid,
-      //       target: domain[1] + i
-      //     });
-      //   });
-      // }
-      // let graph = { nodes: nodes, links: links };
-
-      let domain = mapdata.pointIndexInfo.dataPoint;
-      let nodes = [];
-      let links = [];
-      for (let i = domain[0]; i < domain[1]; i++) {
-        nodes.push({
-          id: i,
-          category: "point",
-          x: mapdata.finalPoints[i][0],
-          y: mapdata.finalPoints[i][1]
-        });
-      }
-      let count = domain[1];
-      Object.keys(allDocKeywords).forEach(key => {
-        for (let i = 0; i < 5; i++) {
-          nodes.push({
-            id: count,
-            category: "tag",
-            word: allDocKeywords[key][i]
-          });
-          links.push({
-            source: +key,
-            target: count
-          });
-          count++;
-        }
-      });
-      let graph = { nodes: nodes, links: links };
-
-      let instance = this;
-      let nodesCopy = _.cloneDeep(graph.nodes);
-      let fixedNodes = graph.nodes.filter(d => d.category === "point");
-
-      let force = d3
-        .forceSimulation(graph.nodes)
-        .force("charge", d3.forceManyBody().distanceMax(0.02))
-        .force(
-          "link",
-          d3
-            .forceLink(graph.links)
-            .distance(0.5)
-            .id(d => d.id)
-        )
-        .alphaMin(0.02)
-        .on("tick", tick);
-
-      let link = d3
-        .selectAll(".link")
-        .data(graph.links)
-        .enter();
-
-      let node = d3
-        .selectAll(".node")
-        .data(graph.nodes)
-        .enter();
-
-      function tick() {
-        console.log("tick1");
-        fixedNodes = fixedNodes.map(d =>
-          Object.assign(d, { fx: nodesCopy[d.id].x, fy: nodesCopy[d.id].y })
-        );
-      }
-
-      force.on("end", function() {
-        console.log("end...");
-        let vectorSource = new olsource_Vector();
-        node.each(function(d, i) {
-          if (d.category === "tag") {
-            let feature = new ol_Feature({
-              geometry: new olgeom_Point([d.x, d.y])
-            });
-            feature.setStyle(
-              new olstyle_Style({
-                text: new olstyle_Text({
-                  font: "10px Microsoft YaHei",
-                  text: d.word,
-                  fill: new olstyle_Fill({
-                    color: "#222"
-                  })
-                })
-              })
-            );
-            vectorSource.addFeature(feature);
-          }
-        });
-        link.each(function(d) {
-          let feature = new ol_Feature({
-            geometry: new olgeom_LineString([
-              [d.source.x, d.source.y],
-              [d.target.x, d.target.y]
-            ])
-          });
-          feature.setStyle(
-            new olstyle_Style({
-              stroke: new olstyle_Stroke({
-                color: "rgb(255, 0, 0, 0.1)"
-              })
-            })
-          );
-          vectorSource.addFeature(feature);
-        });
-        let layer = new ollayer_Vector({
-          title: "Force",
-          source: vectorSource
-        });
-        instance.map.addLayer(layer);
-      });
-    },
     getOverviewWords(n) {
       let word2doclist = {};
-      Object.keys(cluserdata).forEach(category => {
-        cluserdata[category].forEach(docid => {
-          let kws = allDocKeywords[docid.toString()];
+      Object.keys(mapdata.clusters).forEach(category => {
+        mapdata.clusters[category].forEach(docid => {
+          let kws = allDocKeywords[docid];
           kws.forEach(word => {
             let key = category + "-" + word;
             if (word2doclist[key] === undefined) {
@@ -642,12 +491,13 @@ export default {
         nodes.filter(d => d.category === "tag").length
       );
       let graph = { nodes: nodes, links: links };
+      console.log(graph)
       return graph;
     },
     getWords(extent, n) {
       let word2doclist = {};
-      Object.keys(cluserdata).forEach(category => {
-        cluserdata[category].forEach(docid => {
+      Object.keys(mapdata.clusters).forEach(category => {
+        mapdata.clusters[category].forEach(docid => {
           if (
             mapdata.finalPoints[docid][0] > extent[0] &&
             mapdata.finalPoints[docid][0] < extent[2] &&

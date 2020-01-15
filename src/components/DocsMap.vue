@@ -1,5 +1,6 @@
 <template>
   <div class="fastmap-container">
+    <div id="control-panel"></div>
     <div id="fastmap"></div>
   </div>
 </template>
@@ -78,7 +79,7 @@ export default {
         .interpolator(d3.interpolateYlGn); //interpolateBrBG,interpolateYlGn
       this.shadeColor = d3
         .scaleSequential()
-        .domain([0, 20])
+        .domain([-10, 20])
         .interpolator(d3.interpolateReds); //interpolateBrBG,interpolateYlGn,interpolateOranges,interpolateTurbo
       this.roadwithScale = d3
         .scaleLinear()
@@ -859,35 +860,36 @@ export default {
                     font: d.fontsize + "px " + fontname,
                     text: d.word,
                     fill: new olstyle_Fill({
-                      color: "rgb(0, 0, 0, 0.8)"
+                      color: instance
+                      .shadeColor(d.doclist.length) //"rgb(255, 255, 255, 0.8)"
                     })
                   })
                 })
               );
               textFeature.setId("text-" + i);
-              let shadeFeature = new ol_Feature({
-                geometry: new olgeom_Polygon([
-                  [
-                    [d.x - d.width / 2, d.y - d.height / 2],
-                    [d.x + d.width / 2, d.y - d.height / 2],
-                    [d.x + d.width / 2, d.y + d.height / 2],
-                    [d.x - d.width / 2, d.y + d.height / 2],
-                    [d.x - d.width / 2, d.y - d.height / 2]
-                  ]
-                ])
-              });
-              shadeFeature.setStyle(
-                new olstyle_Style({
-                  fill: new olstyle_Fill({
-                    color: instance
-                      .shadeColor(d.doclist.length)
-                      .replace(")", ", 0.5)") //"rgb(255, 255, 255, 0.8)"
-                  })
-                })
-              );
-              shadeFeature.setId("shade-" + i);
+              // let shadeFeature = new ol_Feature({
+              //   geometry: new olgeom_Polygon([
+              //     [
+              //       [d.x - d.width / 2, d.y - d.height / 2],
+              //       [d.x + d.width / 2, d.y - d.height / 2],
+              //       [d.x + d.width / 2, d.y + d.height / 2],
+              //       [d.x - d.width / 2, d.y + d.height / 2],
+              //       [d.x - d.width / 2, d.y - d.height / 2]
+              //     ]
+              //   ])
+              // });
+              // shadeFeature.setStyle(
+              //   new olstyle_Style({
+              //     fill: new olstyle_Fill({
+              //       color: instance
+              //         .shadeColor(d.doclist.length)
+              //         .replace(")", ", 0.5)") //"rgb(255, 255, 255, 0.8)"
+              //     })
+              //   })
+              // );
+              // shadeFeature.setId("shade-" + i);
               instance.wordSource.addFeature(textFeature);
-              instance.wordSource.addFeature(shadeFeature);
+              // instance.wordSource.addFeature(shadeFeature);
             }
           });
         });
@@ -903,7 +905,6 @@ export default {
           let featureType = featureId.split("-")[0];
           let featureIndex = featureId.split("-")[1];
           switch (featureType) {
-            case "shade":
             case "text":
               (function() {
                 let obj = instance.displayKeywords[+featureIndex];
@@ -961,9 +962,15 @@ export default {
   width: 100%;
   height: 100%;
 
+  #control-panel {
+    display: inline-block;
+    width: 20%;
+    height: 100%;
+  }
+
   #fastmap {
     display: inline-block;
-    width: 100%;
+    width: 80%;
     height: 100%;
 
     /deep/ .layer-switcher {
