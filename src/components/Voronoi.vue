@@ -17,8 +17,8 @@ import * as olextent from "ol/extent";
 import * as olproj from "ol/proj";
 import * as olgeom from "ol/geom";
 import * as olstyle from "ol/style";
-import projdata from  "../../public/data/output/thucnews/projection_dense_tfidf.json"
-import similarityMatrix from "../../public/data/output/thucnews/similarity_matrix_5round.json"
+import projdata from  "../../public/data/output/thucnews/proj.json"
+import similarityMatrix from "../../public/data/output/thucnews/similarity.json"
 export default {
   name: "Voronoi",
   data() {
@@ -185,6 +185,9 @@ export default {
           }
         }
         // 给边界空白多边形绘制颜色
+        if(cells[i] == undefined) {
+          continue;
+        }
         let boundaryPoints = this.detectBoundaries(cells[i]);
         if (boundaryPoints.length > 0) {
           let boundaryCoords = cells[i].filter(d => {

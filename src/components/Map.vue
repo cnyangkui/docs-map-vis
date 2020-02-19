@@ -20,9 +20,9 @@ import * as olstyle from "ol/style";
 import * as olinteraction from "ol/interaction";
 import * as olcontrol from "ol/control";
 import LayerSwitcher from "ol-layerswitcher/src/ol-layerswitcher.js";
-import projdata from "../../public/data/output/thucnews/projection_dense_tfidf.json";
-import similarityMatrix from "../../public/data/output/thucnews/similarity_matrix_5round.json";
-import cluserdata from "../../public/data/output/thucnews/cluster.json"
+import projdata from "../../public/data/output/thucnews/proj.json";
+import similarityMatrix from "../../public/data/output/thucnews/similarity.json";
+import clusterdata from "../../public/data/output/thucnews/cluster.json"
 import longdisHighsimilarity from "../assets/js/dist2similarity.js";
 import Graph from "../assets/js/dijkstra.js";
 export default {
@@ -40,7 +40,6 @@ export default {
         edge2docindex: new Map(), // 与每条边共边的多边形索引
         graphdata: new Map(), // 根据多边形构造的图数据
         graph: new Graph(), // 根据多边形的边构造图
-        clusterdata: []
       },
       config: {
         mapIterationNum: 50,
@@ -344,15 +343,6 @@ export default {
         let radio = _.intersection(doclink, doclink2).length / doclink.length;
         console.log("结构保持率：" + radio.toFixed(2));
       })();
-      // 处理聚类数据
-      (function(){
-        instance.alldata.clusterdata = new Array(projdata.length);
-        Object.keys(cluserdata).forEach(key => {
-          cluserdata[key].forEach(value => {
-            instance.alldata.clusterdata[value] = +key;
-          })
-        })
-      })()
     },
     initMap() {
       this.map = new ol.Map({
@@ -482,11 +472,11 @@ export default {
       return vectorSource;
     },
     addCluster() {
-      let clsuterNum = Object.keys(cluserdata).length;
+      let clusterNum = new Set(clusterdata).size;
       let color = d3
         .scaleSequential()
-        .domain([0, clsuterNum])
-        .interpolator(d3.interpolateYlGn);
+        .domain([0, clusterNum])
+        .interpolator(d3.interpolateSinebow);//interpolateSinebow, interpolateYlGn
       let vectorSource = new olsource.Vector();
       this.alldata.polygons.forEach((pg, index) => {
         let feature = new ol.Feature({
@@ -507,7 +497,7 @@ export default {
           feature.setStyle(
             new olstyle.Style({
               fill: new olstyle.Fill({
-                color: color(this.alldata.clusterdata[index])
+                color: color(clusterdata[index])
               }),
               stroke: new olstyle.Stroke({
                 color: "grey"

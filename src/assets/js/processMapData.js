@@ -274,21 +274,6 @@ function getGraphData(similarityMatrix, edge2docindex, ecoords, pointIndexInfo) 
 }
 
 /**
- * 转换聚类数据格式
- * @param {Object} clusterdata {label1: [index1, index2, ...], label2: [...], ...}
- * @returns {Object} {index: label, ...} index 和 label 都为 int 类型
- */
-function getCluster(clusterdata) {
-  let cluster = {};
-  Object.keys(clusterdata).forEach(key => {
-    clusterdata[key].forEach(value => {
-      cluster[value] = +key;
-    })
-  })
-  return cluster;
-}
-
-/**
  * 计算最短路径
  * @param {Array} projdata [{index: number, text: string, x: number, y: number}, ...]
  * @param {Array} similarityMatrix 二维数组, 存储所有文档对的相似度 
@@ -347,7 +332,6 @@ function shortestPath(projdata, similarityMatrix, dist_quantile = 0.3, similarit
  * 计算得到地图相关数据
  * @param {Array} projdata [{index: number, text: string, x: number, y: number}, ...]
  * @param {Array} similarityMatrix 二维数组, 存储所有文档对的相似度 
- * @param {Object} clusterdata {label1: [index1, index2, ...], label2: [...], ...}
  * @param {Object} config {
  *  mapIterationNum: number 地图迭代次数
  *  outerPointNum: number 四周随机点数量
@@ -358,7 +342,7 @@ function shortestPath(projdata, similarityMatrix, dist_quantile = 0.3, similarit
  * }
  * @returns {Object} {dataExtent: Array, mapExtent: Array, allPoints: Array, pointIndexInfo: Object, polygons: Array, ecoords: Array, ecoords2index: Map, edge2docindex: Map, paths: Array, clusters: Object }
  */
-function processMapData(projdata, similarityMatrix, clusterdata, config) {
+function processMapData(projdata, similarityMatrix, config) {
   let { dataExtent, mapExtent } = getExtent(projdata);
   let outerPoints = generateOuterPoints(dataExtent, mapExtent, config.outerPointNum);
   let innerPoints = generateInnerPoints(projdata, dataExtent, config.innerXNum, config.innerYNum);
@@ -369,11 +353,10 @@ function processMapData(projdata, similarityMatrix, clusterdata, config) {
     innerPoint: [projdata.length + outerPoints.length, allPoints.length]
   };
   let polygons = getVoronoi(mapExtent, allPoints, config.mapIterationNum);
-  let clusters = getCluster(clusterdata);
   let { ecoords, ecoords2index, edge2docindex } = getAllEdges(polygons, pointIndexInfo);
   let graphdata = getGraphData(similarityMatrix, edge2docindex, ecoords, pointIndexInfo)
   let paths = shortestPath(projdata, similarityMatrix, config.dist_quantile, config.similarity_threshold, graphdata, polygons, ecoords, ecoords2index);
-  return { dataExtent, mapExtent, allPoints, pointIndexInfo, polygons, ecoords, ecoords2index, edge2docindex, paths, clusters }
+  return { dataExtent, mapExtent, allPoints, pointIndexInfo, polygons, ecoords, ecoords2index, edge2docindex, paths }
 }
 
 export default processMapData;

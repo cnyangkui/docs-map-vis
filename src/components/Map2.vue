@@ -20,9 +20,9 @@ import * as olstyle from "ol/style";
 import * as olinteraction from "ol/interaction";
 import * as olcontrol from "ol/control";
 import LayerSwitcher from "ol-layerswitcher/src/ol-layerswitcher.js";
-import projdata from "../../public/data/output/thucnews/projection_dense_tfidf.json";
-import similarityMatrix from "../../public/data/output/thucnews/similarity_matrix_5round.json";
-import cluserdata from "../../public/data/output/thucnews/cluster.json"
+import projdata from "../../public/data/output/thucnews/proj.json";
+import similarityMatrix from "../../public/data/output/thucnews/similarity.json";
+import clusterdata from "../../public/data/output/thucnews/cluster.json"
 import processMapData from "../assets/js/processMapData.js"
 export default {
   name: "Map",
@@ -80,7 +80,7 @@ export default {
         .scaleLinear()
         .domain([0.2, 0.5])
         .range([1, 5]);
-      this.mapdata = processMapData(projdata, similarityMatrix, cluserdata, this.config);
+      this.mapdata = processMapData(projdata, similarityMatrix, this.config);
       console.log(this.mapdata)
     },
     initMap() {
@@ -211,10 +211,10 @@ export default {
       return vectorSource;
     },
     addCluster() {
-      let clsuterNum = Object.keys(cluserdata).length;
+      let clusterNum = new Set(clusterdata).size;
       let color = d3
         .scaleSequential()
-        .domain([0, clsuterNum])
+        .domain([0, clusterNum])
         .interpolator(d3.interpolateYlGn);
       let vectorSource = new olsource.Vector();
       this.mapdata.polygons.forEach((pg, index) => {
@@ -236,7 +236,7 @@ export default {
           feature.setStyle(
             new olstyle.Style({
               fill: new olstyle.Fill({
-                color: color(this.mapdata.clusters[index])
+                color: color(clusterdata[index])
               }),
               stroke: new olstyle.Stroke({
                 color: "grey"

@@ -18,8 +18,8 @@ import * as olproj from "ol/proj";
 import * as olgeom from "ol/geom";
 import * as olstyle from "ol/style";
 import * as olinteraction from "ol/interaction";
-import projdata from "../../public/data/output/thucnews/projection_dense_tfidf.json";
-import similarityMatrix from "../../public/data/output/thucnews/similarity_matrix_5round.json";
+import projdata from "../../public/data/output/thucnews/proj.json";
+import similarityMatrix from "../../public/data/output/thucnews/similarity.json";
 import longdisHighsimilarity from "../assets/js/dist2similarity.js";
 import Graph from "../assets/js/dijkstra.js";
 export default {
@@ -71,7 +71,7 @@ export default {
       this.addDocPoint();
       this.addClickEventOnRoad();
       let end = new Date();
-      console.log("耗时:", end-start);
+      console.log("耗时:", end - start);
     });
   },
   methods: {
@@ -198,16 +198,12 @@ export default {
           [instance.mapExtent[2], instance.mapExtent[3]]
         ])
         .polygons(this.alldata.points);
-      // 获得Voronoi的多边形  
-      this.alldata.polygons = cells.map(c => {
-        let pg = c;
-        pg.push(c[0]);
-        return pg;
-      });
       // Voronoi每次选取多边形中心，重新绘制，多次迭代后变成六边形地图
-      let docCoords = [];
       for (let i = 0; i < this.config.mapIterationNum; i++) {
-        docCoords = this.alldata.polygons.map(d => d3.polygonCentroid(d));
+        let docCoords = [];
+        cells.forEach(d => {
+          docCoords.push(d3.polygonCentroid(d));
+        });
         cells = d3
           .voronoi()
           .extent([
@@ -215,13 +211,16 @@ export default {
             [this.mapExtent[2], this.mapExtent[3]]
           ])
           .polygons(docCoords);
-        // 获得Voronoi的多边形
-        this.alldata.polygons = cells.map(c => {
-          let pg = c;
-          pg.push(c[0]);
-          return pg;
-        });
+        for (let i = 0; i < cells.length; i++) {
+          cells[i].push(cells[i][0]);
+        }
       }
+      // 获得Voronoi的多边形
+      this.alldata.polygons = [];
+      for (let i = 0; i < cells.length; i++) {
+        cells[i].push(cells[i][0]);
+      }
+      this.alldata.polygons = cells;
 
       let p_index = 0;
       // 构建多边形边上点的坐标与索引的互相映射，忽略海洋隐喻的多边形
@@ -240,13 +239,16 @@ export default {
       }
       // 对于多边形的每条边，获得与之共边的多边形的索引
       for (let pi in this.alldata.polygons) {
-        if (pi >= projdata.length && pi < projdata.length + this.config.outerPointNum) {
+        if (
+          pi >= projdata.length &&
+          pi < projdata.length + this.config.outerPointNum
+        ) {
           continue;
         }
-        let pg = this.alldata.polygons[pi];  
+        let pg = this.alldata.polygons[pi];
         for (let i = 0, len = pg.length - 1; i < len; i++) {
           let p1 = pg[i]; // 多边形上的节点
-          let p2 = pg[i+1];  // 多边形上的节点
+          let p2 = pg[i + 1]; // 多边形上的节点
           let i1 = this.alldata.ecoords2index.get(JSON.stringify(p1));
           let i2 = this.alldata.ecoords2index.get(JSON.stringify(p2));
           let edge1 = i1 + "-" + i2;
@@ -266,7 +268,7 @@ export default {
             this.alldata.edge2docindex.set(edge2, [pi]);
           }
         }
-      };
+      }
       // 多边形每条边距离的归一化
       let weightScale;
       (function() {
@@ -556,7 +558,7 @@ export default {
           })
         })
       );
-    },
+    }
   }
 };
 </script>

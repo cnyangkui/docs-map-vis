@@ -2,6 +2,8 @@
 node_modules
 /dist
 package-lock.json
+.idea
+__pycache__
 
 # local env files
 .env.local
@@ -20,3 +22,4 @@ yarn-error.log*
 *.njsproj
 *.sln
 *.sw?
+*.pyc

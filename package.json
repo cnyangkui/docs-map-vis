@@ -7,7 +7,6 @@
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint",
     "generate": "node src/assets/lib/generateMapData.js",
-    "generate2": "node src/assets/lib/generateMapData2.js",
     "fix-memory-limit": "cross-env LIMIT=8092 increase-memory-limit"
   },
   "dependencies": {

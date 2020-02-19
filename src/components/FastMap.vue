@@ -30,12 +30,12 @@ import {
   OverviewMap as olcontrol_OverviewMap
 } from "ol/control";
 import LayerSwitcher from "ol-layerswitcher/src/ol-layerswitcher.js";
-import projdata from "../../public/data/output/thucnews/projection_dense_tfidf.json";
-import similarityMatrix from "../../public/data/output/thucnews/similarity_matrix_5round.json";
-import cluserdata from "../../public/data/output/thucnews/cluster.json";
+import projdata from "../../public/data/output/thucnews/proj.json";
+import similarityMatrix from "../../public/data/output/thucnews/similarity.json";
+import clusterdata from "../../public/data/output/thucnews/cluster.json";
 import mapdata from "../../public/data/output/thucnews/mapdata.json";
-import allDocKeywords from "../../public/data/output/thucnews/doc2keyword.json";
-// { dataExtent, mapExtent, pointIndexInfo, polygons, finalPoints, ecoords, edge2docindex, paths, clusters }
+import allDocKeywords from "../../public/data/output/thucnews/keywords.json";
+// { dataExtent, mapExtent, pointIndexInfo, polygons, finalPoints, ecoords, edge2docindex, paths }
 export default {
   name: "FastMap",
   data() {
@@ -65,7 +65,7 @@ export default {
       let start = new Date();
       this.processData();
       this.initMap();
-      this.addClickEventOnRoad();
+      this.addClickEvent();
       let end = new Date();
       console.log("耗时:", end - start);
     });
@@ -101,7 +101,7 @@ export default {
       });
       this.layers.clusterLayer = new ollayer_Vector({
         title: "Cluster",
-        // type: "base",
+        type: "base",
         visible: false,
         source: this.addCluster(),
         opacity: 0.3
@@ -122,7 +122,7 @@ export default {
             layers: [
               new ollayer_Group({
                 title: "Topography",
-                // type: "base",
+                type: "base",
                 combine: true,
                 visible: true,
                 layers: [
@@ -295,10 +295,10 @@ export default {
       return vectorSource;
     },
     addCluster() {
-      let clsuterNum = Object.keys(cluserdata).length;
+      let clusterNum = new Set(clusterdata).size;
       let color = d3
         .scaleSequential()
-        .domain([0, clsuterNum])
+        .domain([0, clusterNum])
         .interpolator(d3.interpolateYlGn);
       let vectorSource = new olsource_Vector();
       mapdata.polygons.forEach((pg, index) => {
@@ -320,7 +320,7 @@ export default {
           feature.setStyle(
             new olstyle_Style({
               fill: new olstyle_Fill({
-                color: color(mapdata.clusters[index])
+                color: color(clusterdata[index])
               }),
               stroke: new olstyle_Stroke({
                 color: "grey"
@@ -434,8 +434,8 @@ export default {
     },
     addForce() {
       // let word2doclist = {};
-      // Object.keys(cluserdata).forEach(category => {
-      //   cluserdata[category].forEach(docid => {
+      // Object.keys(clusterdata).forEach(category => {
+      //   clusterdata[category].forEach(docid => {
       //     let kws = allDocKeywords[docid.toString()];
       //     kws.forEach(word => {
       //       let key = category + "-" + word;
@@ -585,19 +585,17 @@ export default {
     },
     getOverviewWords(n) {
       let word2doclist = {};
-      Object.keys(cluserdata).forEach(category => {
-        cluserdata[category].forEach(docid => {
-          let kws = allDocKeywords[docid.toString()];
-          kws.forEach(word => {
-            let key = category + "-" + word;
-            if (word2doclist[key] === undefined) {
-              word2doclist[key] = [docid];
-            } else {
-              word2doclist[key].push(docid);
-            }
-          });
+      for (let docid = 0; docid < clusterdata.length; docid++) {
+        let kws = allDocKeywords[docid];
+        kws.forEach(word => {
+          let key = clusterdata[docid] + "-" + word; //key用 clusterlabel-word 表示
+          if (word2doclist[key] === undefined) {
+            word2doclist[key] = [docid];
+          } else {
+            word2doclist[key].push(docid);
+          }
         });
-      });
+      }
       let wordArray = [];
       Object.keys(word2doclist).forEach(d => {
         if (word2doclist[d].length > n) {
@@ -646,26 +644,24 @@ export default {
     },
     getWords(extent, n) {
       let word2doclist = {};
-      Object.keys(cluserdata).forEach(category => {
-        cluserdata[category].forEach(docid => {
-          if (
-            mapdata.finalPoints[docid][0] > extent[0] &&
-            mapdata.finalPoints[docid][0] < extent[2] &&
-            mapdata.finalPoints[docid][1] > extent[1] &&
-            mapdata.finalPoints[docid][1] < extent[3]
-          ) {
-            let kws = allDocKeywords[docid.toString()];
-            kws.forEach(word => {
-              let key = category + "-" + word;
-              if (word2doclist[key] === undefined) {
-                word2doclist[key] = [docid];
-              } else {
-                word2doclist[key].push(docid);
-              }
-            });
-          }
-        });
-      });
+      for (let docid = 0; docid < clusterdata.length; docid++) {
+        if (
+          mapdata.finalPoints[docid][0] > extent[0] &&
+          mapdata.finalPoints[docid][0] < extent[2] &&
+          mapdata.finalPoints[docid][1] > extent[1] &&
+          mapdata.finalPoints[docid][1] < extent[3]
+        ) {
+          let kws = allDocKeywords[docid];
+          kws.forEach(word => {
+            let key = clusterdata[docid] + "-" + word;
+            if (word2doclist[key] === undefined) {
+              word2doclist[key] = [docid];
+            } else {
+              word2doclist[key].push(docid);
+            }
+          });
+        }
+      }
       let wordArray = [];
       Object.keys(word2doclist).forEach(d => {
         if (word2doclist[d].length > n) {
@@ -893,7 +889,7 @@ export default {
         });
       });
     },
-    addClickEventOnRoad() {
+    addClickEvent() {
       let selectSingleClick = new olinteraction_Select();
       let instance = this;
       selectSingleClick.on("select", function(e) {

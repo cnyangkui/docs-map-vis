@@ -3,9 +3,8 @@ const d3 = require("d3")
 const _  = require("lodash")
 const longdisHighsimilarity = require("./dist2similarity.js")
 const Graph = require("./dijkstra.js")
-const projdata = require("../../../public/data/output/thucnews/projection_dense_tfidf.json")
-const similarityMatrix = require("../../../public/data/output/thucnews/similarity_matrix_5round.json")
-const cluserdata = require("../../../public/data/output/thucnews/cluster.json")
+const projdata = require("../../../public/data/output/thucnews/proj.json")
+const similarityMatrix = require("../../../public/data/output/thucnews/similarity.json")
 
 /**
  * 获取投影数据的范围
@@ -133,16 +132,12 @@ function getVoronoi(mapExtent, allPoints, mapIterationNum) {
       [mapExtent[2], mapExtent[3]]
     ])
     .polygons(allPoints);
-  // 获得Voronoi的多边形
-  let polygons = cells.map(c => {
-    let pg = c;
-    pg.push(c[0]);
-    return pg;
-  });
   // Voronoi每次选取多边形中心，重新绘制，多次迭代后网格趋向于六边形
-  let centerPoints = [];
   for (let i = 0; i < mapIterationNum; i++) {
-    centerPoints = polygons.map(d => d3.polygonCentroid(d));
+    let centerPoints = [];
+    cells.forEach(c => {
+      centerPoints.push(d3.polygonCentroid(c));
+    })
     cells = d3
       .voronoi()
       .extent([
@@ -150,12 +145,12 @@ function getVoronoi(mapExtent, allPoints, mapIterationNum) {
         [mapExtent[2], mapExtent[3]]
       ])
       .polygons(centerPoints);
-    polygons = cells.map(c => {
-      let pg = c;
-      pg.push(c[0]);
-      return pg;
-    });
   }
+  let polygons = cells.map(c => {
+    let pg = c;
+    pg.push(c[0]);
+    return pg;
+  });
   return polygons;
 }
 
@@ -280,21 +275,6 @@ function getGraphData(similarityMatrix, edge2docindex, ecoords, pointIndexInfo) 
 }
 
 /**
- * 转换聚类数据格式
- * @param {Object} clusterdata {label1: [index1, index2, ...], label2: [...], ...}
- * @returns {Object} {index: label, ...} index 和 label 都为 int 类型
- */
-function getCluster(clusterdata) {
-  let cluster = {};
-  Object.keys(clusterdata).forEach(key => {
-    clusterdata[key].forEach(value => {
-      cluster[value] = +key;
-    })
-  })
-  return cluster;
-}
-
-/**
  * 计算最短路径
  * @param {Array} projdata [{index: number, text: string, x: number, y: number}, ...]
  * @param {Array} similarityMatrix 二维数组, 存储所有文档对的相似度 
@@ -353,7 +333,6 @@ function shortestPath(projdata, similarityMatrix, dist_quantile = 0.3, similarit
  * 计算得到地图相关数据
  * @param {Array} projdata [{index: number, text: string, x: number, y: number}, ...]
  * @param {Array} similarityMatrix 二维数组, 存储所有文档对的相似度 
- * @param {Object} clusterdata {label1: [index1, index2, ...], label2: [...], ...}
  * @param {Object} config {
  *  mapIterationNum: number 地图迭代次数
  *  outerPointNum: number 四周随机点数量
@@ -364,7 +343,7 @@ function shortestPath(projdata, similarityMatrix, dist_quantile = 0.3, similarit
  * }
  * @returns {Object} {dataExtent: Array, mapExtent: Array, pointIndexInfo: Object, polygons: Array, finalPoints: Array, ecoords: Array, ecoords2index: Object, edge2docindex: Object, paths: Array, clusters: Object }
  */
-function processMapData(projdata, similarityMatrix, clusterdata, config) {
+function processMapData(projdata, similarityMatrix, config) {
   let { dataExtent, mapExtent } = getExtent(projdata);
   let outerPoints = generateOuterPoints(dataExtent, mapExtent, config.outerPointNum);
   let innerPoints = generateInnerPoints(projdata, dataExtent, config.innerXNum, config.innerYNum);
@@ -376,11 +355,10 @@ function processMapData(projdata, similarityMatrix, clusterdata, config) {
   };
   let polygons = getVoronoi(mapExtent, allPoints, config.mapIterationNum);
   let finalPoints = polygons.map(d => d.data)
-  let clusters = getCluster(clusterdata);
   let { ecoords, ecoords2index, edge2docindex } = getAllEdges(polygons, pointIndexInfo);
-  let graphdata = getGraphData(similarityMatrix, edge2docindex, ecoords, pointIndexInfo)
+  let graphdata = getGraphData(similarityMatrix, edge2docindex, ecoords, pointIndexInfo);
   let paths = shortestPath(projdata, similarityMatrix, config.dist_quantile, config.similarity_threshold, graphdata, polygons, ecoords, ecoords2index);
-  return { dataExtent, mapExtent, pointIndexInfo, polygons, finalPoints, ecoords, edge2docindex, paths, clusters }
+  return { dataExtent, mapExtent, pointIndexInfo, polygons, finalPoints, ecoords, edge2docindex, paths }
 }
 
 let config= {
@@ -391,7 +369,7 @@ let config= {
   dist_quantile: 0.3, // 计算最短路径时的约束，欧氏距离分位数阈值
   similarity_threshold: 0.2 // 计算最短路径时的约束，相似度阈值
 };
-let generatedData = processMapData(projdata, similarityMatrix, cluserdata, config);
+let generatedData = processMapData(projdata, similarityMatrix, config);
 let writePath = "./public/data/output/thucnews/mapdata.json"
 fs.writeFile(writePath, JSON.stringify(generatedData),  function(err) {
   if (err) {
