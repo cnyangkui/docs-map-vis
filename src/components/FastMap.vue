@@ -30,11 +30,11 @@ import {
   OverviewMap as olcontrol_OverviewMap
 } from "ol/control";
 import LayerSwitcher from "ol-layerswitcher/src/ol-layerswitcher.js";
-import projdata from "../../public/data/output/thucnews/proj.json";
-import similarityMatrix from "../../public/data/output/thucnews/similarity.json";
-import clusterdata from "../../public/data/output/thucnews/cluster.json";
-import mapdata from "../../public/data/output/thucnews/mapdata.json";
-import allDocKeywords from "../../public/data/output/thucnews/keywords.json";
+import projdata from "../../public/data/output/nCovMemory/proj.json";
+import similarityMatrix from "../../public/data/output/nCovMemory/similarity.json";
+import clusterdata from "../../public/data/output/nCovMemory/cluster.json";
+import mapdata from "../../public/data/output/nCovMemory/mapdata.json";
+import allDocKeywords from "../../public/data/output/nCovMemory/keywords.json";
 // { dataExtent, mapExtent, pointIndexInfo, polygons, finalPoints, ecoords, edge2docindex, paths }
 export default {
   name: "FastMap",
@@ -82,7 +82,7 @@ export default {
         .interpolator(d3.interpolateReds); //interpolateBrBG,interpolateYlGn,interpolateOranges,interpolateTurbo
       this.roadwithScale = d3
         .scaleLinear()
-        .domain([0.2, 0.5])
+        .domain([0.3, 1])
         .range([1, 5]);
 
       console.log(mapdata);
@@ -726,10 +726,10 @@ export default {
           "link",
           d3
             .forceLink(graph.links)
-            .distance(0.5)
+            .distance(0.1)
             .id(d => d.id)
         )
-        .alphaMin(0.02)
+        .alphaMin(0.01)
         .on("tick", tick);
 
       // let link = d3
@@ -786,7 +786,7 @@ export default {
           .forceSimulation(tagNodes)
           .force("charge", d3.forceManyBody().strength(0))
           // .force('center', d3.forceCenter(center[0], center[1]))
-          .alphaMin(0.2)
+          .alphaMin(0.1)
           .on("tick", function() {
             console.log("tick2");
             let q = d3

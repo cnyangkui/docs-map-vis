@@ -3,8 +3,8 @@ const d3 = require("d3")
 const _  = require("lodash")
 const longdisHighsimilarity = require("./dist2similarity.js")
 const Graph = require("./dijkstra.js")
-const projdata = require("../../../public/data/output/thucnews/proj.json")
-const similarityMatrix = require("../../../public/data/output/thucnews/similarity.json")
+const projdata = require("../../../public/data/output/nCovMemory/proj.json")
+const similarityMatrix = require("../../../public/data/output/nCovMemory/similarity.json")
 
 /**
  * 获取投影数据的范围
@@ -367,10 +367,10 @@ let config= {
   innerXNum: 20,
   innerYNum: 20,
   dist_quantile: 0.3, // 计算最短路径时的约束，欧氏距离分位数阈值
-  similarity_threshold: 0.2 // 计算最短路径时的约束，相似度阈值
+  similarity_threshold: 0.5 // 计算最短路径时的约束，相似度阈值
 };
 let generatedData = processMapData(projdata, similarityMatrix, config);
-let writePath = "./public/data/output/thucnews/mapdata.json"
+let writePath = "./public/data/output/nCovMemory/mapdata.json"
 fs.writeFile(writePath, JSON.stringify(generatedData),  function(err) {
   if (err) {
       return console.error(err);

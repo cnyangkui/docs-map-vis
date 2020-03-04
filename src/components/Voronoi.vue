@@ -17,8 +17,8 @@ import * as olextent from "ol/extent";
 import * as olproj from "ol/proj";
 import * as olgeom from "ol/geom";
 import * as olstyle from "ol/style";
-import projdata from  "../../public/data/output/thucnews/proj.json"
-import similarityMatrix from "../../public/data/output/thucnews/similarity.json"
+import projdata from  "../../public/data/output/nCovMemory/proj.json"
+import similarityMatrix from "../../public/data/output/nCovMemory/similarity.json"
 export default {
   name: "Voronoi",
   data() {

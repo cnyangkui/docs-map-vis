@@ -39,6 +39,7 @@ utils.write_json(all_keywords, 'outputdata/keywords.json')
 pprint.pprint("关键词抽取结束...")
 
 # 聚类
-labels = corpus.kmeans_docs(n_clusters=14)
+# labels = corpus.kmeans_docs(n_clusters=14)
+labels = corpus.kmeans_features(n_clusters=8, features=proj_data)
 utils.write_json(labels, 'outputdata/cluster.json')
 pprint.pprint("聚类结束...")

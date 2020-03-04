@@ -63,6 +63,7 @@ class Corpus(object):
         self.__tfidf_model = models.TfidfModel(self.__bow_corpus)
         self.__tfidf_corpus = self.__tfidf_model[self.__bow_corpus]
 
+
     def cal_similarity_matrix(self):
         """计算文档相似性矩阵"""
         index_temp = get_tmpfile("index")
@@ -87,12 +88,20 @@ class Corpus(object):
         # return np.around(proj_data, 5).tolist()
         return proj_data.tolist()
 
+
     def kmeans_docs(self, n_clusters=8):
         """文档聚类"""
         features = matutils.corpus2dense(self.__tfidf_corpus, num_terms=len(self.__dictionary.keys()),
                                          num_docs=len(self.corpus)).T
         db = KMeans(n_clusters=n_clusters, random_state=0).fit(features)
         return db.labels_.tolist()
+
+
+    def kmeans_features(self, n_clusters=8, features=None):
+        """特征聚类"""
+        db = KMeans(n_clusters=n_clusters, random_state=0).fit(features)
+        return db.labels_.tolist()
+
 
     def extra_keywords(self, top_k=10, with_weight=False):
         """抽取关键词"""
