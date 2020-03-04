@@ -14,6 +14,7 @@ import Map2 from '../components/Map2.vue'
 import FastMap from '../components/FastMap.vue'
 import TagCloud from '../components/TagCloud.vue'
 import DocsMap from '../components/DocsMap.vue'
+import ForceLayout from '../components/ForceLayout.vue'
 
 Vue.use(VueRouter)
 
@@ -35,6 +36,7 @@ const router = new VueRouter({
     { path: '/fastMap', name: 'FastMap', component: FastMap },
     { path: '/tagcloud', name: 'tagcloud', component: TagCloud },
     { path: '/docsMap', name: 'docsMap', component: DocsMap },
+    { path: '/forceLayout', name: 'forceLayout', component: ForceLayout },
   ]
 });
 

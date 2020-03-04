@@ -3,7 +3,7 @@ const d3 = require("d3")
 const _  = require("lodash")
 const longdisHighsimilarity = require("./dist2similarity.js")
 const Graph = require("./dijkstra.js")
-const projdata = require("../../../public/data/output/nCovMemory/proj.json")
+const projdata = require("../../../public/data/output/nCovMemory/forceResult.json") //proj, forceResult
 const similarityMatrix = require("../../../public/data/output/nCovMemory/similarity.json")
 
 /**
@@ -17,14 +17,12 @@ const similarityMatrix = require("../../../public/data/output/nCovMemory/similar
 function getExtent(projdata) {
   let xExt = d3.extent(projdata, d => d.x);
   let yExt = d3.extent(projdata, d => d.y);
-  let x = xExt[1] - xExt[0] > yExt[1] - yExt[0] ? xExt : yExt;
-  let y = xExt[1] - xExt[0] < yExt[1] - yExt[0] ? xExt : yExt;
-  let dataExtent = [x[0], y[0], x[1], y[1]];
+  let dataExtent = [xExt[0], yExt[0], xExt[1], yExt[1]];
   let mapExtent = [
-    x[0] - 0.1 * (x[1] - x[0]),
-    y[0] - 0.1 * (y[1] - y[0]),
-    x[1] + 0.1 * (x[1] - x[0]),
-    y[1] + 0.1 * (y[1] - y[0])
+    xExt[0] - 0.1 * (xExt[1] - xExt[0]),
+        yExt[0] - 0.1 * (yExt[1] - yExt[0]),
+        xExt[1] + 0.1 * (xExt[1] - xExt[0]),
+        yExt[1] + 0.1 * (yExt[1] - yExt[0])
   ];
   return {
     dataExtent: dataExtent,
@@ -370,7 +368,7 @@ let config= {
   similarity_threshold: 0.5 // 计算最短路径时的约束，相似度阈值
 };
 let generatedData = processMapData(projdata, similarityMatrix, config);
-let writePath = "./public/data/output/nCovMemory/mapdata.json"
+let writePath = "./public/data/output/nCovMemory/forcemapdata.json"
 fs.writeFile(writePath, JSON.stringify(generatedData),  function(err) {
   if (err) {
       return console.error(err);

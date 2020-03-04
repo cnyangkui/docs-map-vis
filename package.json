@@ -6,12 +6,14 @@
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint",
-    "generate": "node src/assets/lib/generateMapData.js",
+    "generateMap": "node src/assets/lib/generateMapData.js",
+    "forcelayout": "node src/assets/lib/forcelayout.js",
     "fix-memory-limit": "cross-env LIMIT=8092 increase-memory-limit"
   },
   "dependencies": {
     "core-js": "^3.3.2",
     "d3": "^5.12.0",
+    "element-ui": "^2.13.0",
     "lodash": "^4.17.15",
     "ol": "^6.1.1",
     "ol-layerswitcher": "^3.4.0",

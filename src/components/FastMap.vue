@@ -32,8 +32,8 @@ import {
 import LayerSwitcher from "ol-layerswitcher/src/ol-layerswitcher.js";
 import projdata from "../../public/data/output/nCovMemory/proj.json";
 import similarityMatrix from "../../public/data/output/nCovMemory/similarity.json";
-import clusterdata from "../../public/data/output/nCovMemory/cluster.json";
-import mapdata from "../../public/data/output/nCovMemory/mapdata.json";
+import clusterdata from "../../public/data/output/nCovMemory/cluster.json"; // cluster, forceResultCluster
+import mapdata from "../../public/data/output/nCovMemory/mapdata.json"; // mapdata, forcemapdata
 import allDocKeywords from "../../public/data/output/nCovMemory/keywords.json";
 // { dataExtent, mapExtent, pointIndexInfo, polygons, finalPoints, ecoords, edge2docindex, paths }
 export default {

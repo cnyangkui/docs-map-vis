@@ -17,8 +17,8 @@ import * as olextent from "ol/extent";
 import * as olproj from "ol/proj";
 import * as olgeom from "ol/geom";
 import * as olstyle from "ol/style";
-import projdata from  "../../public/data/output/nCovMemory/proj.json"
-import similarityMatrix from "../../public/data/output/nCovMemory/similarity.json"
+import projdata from  "../../public/data/output/thucnews/proj.json"
+import similarityMatrix from "../../public/data/output/thucnews/similarity.json"
 export default {
   name: "Voronoi",
   data() {
@@ -46,14 +46,13 @@ export default {
     loadSettings() {
       let xExt = d3.extent(projdata, d => d.x);
       let yExt = d3.extent(projdata, d => d.y);
-      let x = xExt[1] - xExt[0] > yExt[1] - yExt[0] ? xExt : yExt;
-      let y = xExt[1] - xExt[0] < yExt[1] - yExt[0] ? xExt : yExt;
       this.extent = [
-        x[0] - 0.1 * (x[1] - x[0]),
-        y[0] - 0.1 * (y[1] - y[0]),
-        x[1] + 0.1 * (x[1] - x[0]),
-        y[1] + 0.1 * (y[1] - y[0])
+        xExt[0] - 0.1 * (xExt[1] - xExt[0]),
+        yExt[0] - 0.1 * (yExt[1] - yExt[0]),
+        xExt[1] + 0.1 * (xExt[1] - xExt[0]),
+        yExt[1] + 0.1 * (yExt[1] - yExt[0])
       ];
+      // this.extent = [xExt[0], yExt[0], xExt[1], yExt[1]]
       // let w_h = width / height;
       // let x_y = (xExt[1]*1.2 - xExt[0]*1.2) / (yExt[1] - yExt[0]);
       // this.color = d3.scaleLinear().domain([0, 0.2]).range(['yellow', 'green']);
@@ -80,8 +79,6 @@ export default {
       this.layers.docpointLayer = new ollayer.Vector({
         source: vectorSource
       });
-      let xExt = d3.extent(projdata, d => d.x);
-      let yExt = d3.extent(projdata, d => d.y);
 
       projdata.forEach(doc => {
         let feature = new ol.Feature({

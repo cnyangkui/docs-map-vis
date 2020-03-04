@@ -14,14 +14,12 @@ import Graph from "./dijkstra.js";
 function getExtent(projdata) {
   let xExt = d3.extent(projdata, d => d.x);
   let yExt = d3.extent(projdata, d => d.y);
-  let x = xExt[1] - xExt[0] > yExt[1] - yExt[0] ? xExt : yExt;
-  let y = xExt[1] - xExt[0] < yExt[1] - yExt[0] ? xExt : yExt;
-  let dataExtent = [x[0], y[0], x[1], y[1]];
+  let dataExtent = [xExt[0], yExt[0], xExt[1], yExt[1]];
   let mapExtent = [
-    x[0] - 0.1 * (x[1] - x[0]),
-    y[0] - 0.1 * (y[1] - y[0]),
-    x[1] + 0.1 * (x[1] - x[0]),
-    y[1] + 0.1 * (y[1] - y[0])
+    xExt[0] - 0.1 * (xExt[1] - xExt[0]),
+        yExt[0] - 0.1 * (yExt[1] - yExt[0]),
+        xExt[1] + 0.1 * (xExt[1] - xExt[0]),
+        yExt[1] + 0.1 * (yExt[1] - yExt[0])
   ];
   return {
     dataExtent: dataExtent,
@@ -129,16 +127,12 @@ function getVoronoi(mapExtent, allPoints, mapIterationNum) {
       [mapExtent[2], mapExtent[3]]
     ])
     .polygons(allPoints);
-  // 获得Voronoi的多边形
-  let polygons = cells.map(c => {
-    let pg = c;
-    pg.push(c[0]);
-    return pg;
-  });
   // Voronoi每次选取多边形中心，重新绘制，多次迭代后网格趋向于六边形
-  let centerPoints = [];
   for (let i = 0; i < mapIterationNum; i++) {
-    centerPoints = polygons.map(d => d3.polygonCentroid(d));
+    let centerPoints = [];
+    cells.forEach(c => {
+      centerPoints.push(d3.polygonCentroid(c));
+    })
     cells = d3
       .voronoi()
       .extent([
@@ -146,12 +140,12 @@ function getVoronoi(mapExtent, allPoints, mapIterationNum) {
         [mapExtent[2], mapExtent[3]]
       ])
       .polygons(centerPoints);
-    polygons = cells.map(c => {
-      let pg = c;
-      pg.push(c[0]);
-      return pg;
-    });
   }
+  let polygons = cells.map(c => {
+    let pg = c;
+    pg.push(c[0]);
+    return pg;
+  });
   return polygons;
 }
 

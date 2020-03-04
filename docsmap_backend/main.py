@@ -5,9 +5,6 @@ import pprint
 from mynlp.corpus_operator import Corpus
 import utils
 
-# file_dir = ''
-# all_docs = utils.read_corpus(file_dir)
-
 all_docs = []
 with open('projection_dense_tfidf.json', 'r', encoding='utf-8') as f:
     objs = json.load(f)
@@ -16,11 +13,11 @@ for o in objs:
 
 # 分词处理
 corpus = Corpus(all_docs)
+corpus.set_tokenize_config(min_freq=2)
 corpus.tokenize()
 pprint.pprint("分词结束...")
 
 # 计算文档相似性矩阵
-sm = corpus.cal_similarity_matrix()
 matrix = corpus.cal_similarity_matrix()
 utils.write_json(matrix, 'outputdata/similarity.json')
 pprint.pprint("计算相似性矩阵...")
@@ -40,6 +37,6 @@ pprint.pprint("关键词抽取结束...")
 
 # 聚类
 # labels = corpus.kmeans_docs(n_clusters=14)
-labels = corpus.kmeans_features(n_clusters=8, features=proj_data)
+labels = corpus.kmeans_features(n_clusters=14, features=proj_data)
 utils.write_json(labels, 'outputdata/cluster.json')
 pprint.pprint("聚类结束...")

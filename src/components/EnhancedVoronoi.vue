@@ -74,13 +74,11 @@ export default {
       let instance = this;
       let xExt = d3.extent(projdata, d => d.x);
       let yExt = d3.extent(projdata, d => d.y);
-      let x = xExt[1] - xExt[0] > yExt[1] - yExt[0] ? xExt : yExt;
-      let y = xExt[1] - xExt[0] < yExt[1] - yExt[0] ? xExt : yExt;
       this.extent = [
-        x[0] - 0.1 * (x[1] - x[0]),
-        y[0] - 0.1 * (y[1] - y[0]),
-        x[1] + 0.1 * (x[1] - x[0]),
-        y[1] + 0.1 * (y[1] - y[0])
+        xExt[0] - 0.1 * (xExt[1] - xExt[0]),
+        yExt[0] - 0.1 * (yExt[1] - yExt[0]),
+        xExt[1] + 0.1 * (xExt[1] - xExt[0]),
+        yExt[1] + 0.1 * (yExt[1] - yExt[0])
       ];
       this.color = d3
         .scaleSequential()

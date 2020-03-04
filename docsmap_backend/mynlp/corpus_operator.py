@@ -22,8 +22,8 @@ class Corpus(object):
         self.tokenized_docs = list()
         self.stopwords = list()
         self.tokenize_config = {
-            'min_freq': 5,
-            'with_pos': ['n', 'nr', 'ns', 'nt', 'nw', 'nz', 'v', 'a', 'PER', 'LOC', 'ORG']
+            'min_freq': 2,
+            'with_pos': ['n', 'nr', 'ns', 'nt', 'nw', 'nz', 'a', 'PER', 'LOC', 'ORG']
         }
         self.__dictionary = None
         self.__bow_corpus = None
@@ -32,6 +32,14 @@ class Corpus(object):
         self.__similarity_index = None
 
         self.set_stop_words(_get_abs_path(u'哈工大停用词表.txt'))
+
+    @property
+    def dictionary(self):
+        return self.__dictionary
+
+    @property
+    def bow_corpus(self):
+        return self.__bow_corpus
 
     def set_stop_words(self, file_path):
         """从停用词表获取停用词"""
@@ -58,11 +66,10 @@ class Corpus(object):
                 frequency[word] += 1
             docs.append(words)
         self.tokenized_docs = [[word for word in doc if frequency[word] > self.tokenize_config['min_freq']] for doc in docs]
-        self.__dictionary = corpora.Dictionary(docs)
-        self.__bow_corpus = [self.__dictionary.doc2bow(doc) for doc in docs]
+        self.__dictionary = corpora.Dictionary(self.tokenized_docs)
+        self.__bow_corpus = [self.__dictionary.doc2bow(doc) for doc in self.tokenized_docs]
         self.__tfidf_model = models.TfidfModel(self.__bow_corpus)
         self.__tfidf_corpus = self.__tfidf_model[self.__bow_corpus]
-
 
     def cal_similarity_matrix(self):
         """计算文档相似性矩阵"""
@@ -71,6 +78,7 @@ class Corpus(object):
         # index = similarities.MatrixSimilarity(self.__tfidf_corpus)
         sim_matrix = np.array(self.__similarity_index, dtype='float')
         return np.around(sim_matrix, 5).tolist()
+
 
     def save_similarity_index(self, file_path):
         if self.__similarity_index:
@@ -84,9 +92,9 @@ class Corpus(object):
         features = matutils.corpus2dense(self.__tfidf_corpus, num_terms=len(self.__dictionary.keys()),
                                          num_docs=len(self.corpus)).T
         proj_data = TSNE(n_components=n_components, random_state=0).fit_transform(features)
-        # proj_data = proj_data.astype(np.float)
-        # return np.around(proj_data, 5).tolist()
-        return proj_data.tolist()
+        proj_data = np.array(proj_data, dtype='float')
+        print(proj_data.shape)
+        return np.around(proj_data, 5).tolist()
 
 
     def kmeans_docs(self, n_clusters=8):
@@ -102,7 +110,6 @@ class Corpus(object):
         db = KMeans(n_clusters=n_clusters, random_state=0).fit(features)
         return db.labels_.tolist()
 
-
     def extra_keywords(self, top_k=10, with_weight=False):
         """抽取关键词"""
         all_keywords = []
@@ -115,25 +122,18 @@ class Corpus(object):
             all_keywords.append(keywords)
         return all_keywords
 
-    def common_word_rate(self):
-        wordset_list = []
-        docpair2rate = {}
+    def lda(self, num_topics=2):
+        lda = models.LdaModel(corpus=self.__bow_corpus, id2word=self.__dictionary, num_topics=num_topics)
+        pprint.pprint(lda.print_topics(num_topics=num_topics, num_words=20))  # 把所有的主题打印出来看看
+
+
+    def wordfreq(self):
+        print(self.__bow_corpus)
+        frequency = defaultdict(int)
         for doc in self.__bow_corpus:
-            wordset = {w[0] for w in doc}
-            wordset_list.append(wordset)
-        length = len(wordset_list)
-        for i in range(length-1):
-            for j in range(i+1, length):
-                a = len(wordset_list[i] & wordset_list[j])
-                b = len(wordset_list[i] | wordset_list[j])
-                if a == 0 or b == 0:
-                    docpair2rate[str(i)+','+str(j)] = 0
-                else:
-                    docpair2rate[str(i)+','+str(j)] = round(a / b , 4)
-        return docpair2rate
-
-    def lda(self):
-        lda = models.LdaModel(corpus=self.__bow_corpus, id2word=self.__dictionary, num_topics=2)
-        pprint.pprint(lda.print_topics(num_topics=2, num_words=20))  # 把所有的主题打印出来看看
-
-
+            for word in doc:
+                frequency[word[0]] += word[1]
+        wordlist = list(frequency.items())
+        print(len(wordlist))
+        wordlist.sort(key=lambda d: d[1], reverse=True)
+        print(wordlist)
