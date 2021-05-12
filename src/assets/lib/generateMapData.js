@@ -3,8 +3,8 @@ const d3 = require("d3")
 const _  = require("lodash")
 const longdisHighsimilarity = require("./dist2similarity.js")
 const Graph = require("./dijkstra.js")
-const projdata = require("../../../public/data/output/nCovMemory/forceResult.json") //proj, forceResult
-const similarityMatrix = require("../../../public/data/output/nCovMemory/similarity.json")
+const projdata = require("../../../public/data/output/nCovMemory_doc2vec/proj.json") //proj, forceResult
+const similarityMatrix = require("../../../public/data/output/nCovMemory_doc2vec/similarity.json")
 
 /**
  * 获取投影数据的范围
@@ -99,8 +99,8 @@ function generateInnerPoints(projdata, dataExtent, innerXNum, innerYNum) {
   }
   for (let i = 0; i < innerXNum; i++) {
     for (let j = 0; j < innerYNum; j++) {
-      if (grid[i][j] < 10) {
-        let diff = 10 - grid[i][j];
+      if (grid[i][j] < 20) {
+        let diff = 20 - grid[i][j];
         while (diff > 0) {
           let x =
             dataExtent[0] + _.random(i * xspan, (i + 1) * xspan, true);
@@ -132,6 +132,7 @@ function getVoronoi(mapExtent, allPoints, mapIterationNum) {
     .polygons(allPoints);
   // Voronoi每次选取多边形中心，重新绘制，多次迭代后网格趋向于六边形
   for (let i = 0; i < mapIterationNum; i++) {
+    console.log(i);
     let centerPoints = [];
     cells.forEach(c => {
       centerPoints.push(d3.polygonCentroid(c));
@@ -354,9 +355,9 @@ function processMapData(projdata, similarityMatrix, config) {
   let polygons = getVoronoi(mapExtent, allPoints, config.mapIterationNum);
   let finalPoints = polygons.map(d => d.data)
   let { ecoords, ecoords2index, edge2docindex } = getAllEdges(polygons, pointIndexInfo);
-  let graphdata = getGraphData(similarityMatrix, edge2docindex, ecoords, pointIndexInfo);
-  let paths = shortestPath(projdata, similarityMatrix, config.dist_quantile, config.similarity_threshold, graphdata, polygons, ecoords, ecoords2index);
-  return { dataExtent, mapExtent, pointIndexInfo, polygons, finalPoints, ecoords, edge2docindex, paths }
+  // let graphdata = getGraphData(similarityMatrix, edge2docindex, ecoords, pointIndexInfo);
+  // let paths = shortestPath(projdata, similarityMatrix, config.dist_quantile, config.similarity_threshold, graphdata, polygons, ecoords, ecoords2index);
+  return { dataExtent, mapExtent, pointIndexInfo, polygons, finalPoints, ecoords, edge2docindex }
 }
 
 let config= {
@@ -368,7 +369,7 @@ let config= {
   similarity_threshold: 0.5 // 计算最短路径时的约束，相似度阈值
 };
 let generatedData = processMapData(projdata, similarityMatrix, config);
-let writePath = "./public/data/output/nCovMemory/forcemapdata.json"
+let writePath = "./public/data/output/nCovMemory_doc2vec/mapdata.json"
 fs.writeFile(writePath, JSON.stringify(generatedData),  function(err) {
   if (err) {
       return console.error(err);

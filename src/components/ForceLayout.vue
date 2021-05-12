@@ -10,7 +10,7 @@
 </template>
 <script>
 import * as d3 from "d3";
-import similarityMatrix from "../../public/data/output/nCovMemory/similarity.json";
+import similarityMatrix from "../../public/data/output/thucnews/similarity.json";
 export default {
   name: "ForceLayout",
   data() {

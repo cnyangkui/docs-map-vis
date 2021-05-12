@@ -117,10 +117,10 @@ export default {
           new ollayer.Group({
             title: "Overlays",
             layers: [
-              new ollayer.Vector({
-                title: "Road",
-                source: this.addRoad()
-              }),
+              // new ollayer.Vector({
+              //   title: "Road",
+              //   source: this.addRoad()
+              // }),
               new ollayer.Vector({
                 title: "DocPoint",
                 source: this.addDocPoint()
